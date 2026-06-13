@@ -1,31 +1,8 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
 import { Toaster } from "sonner";
 import { SiteHeader } from "@/components/site-header";
+import { fantasqueMono, fantasqueSans } from "@/style/fonts";
 import "./globals.css";
-
-const fantasqueSans = localFont({
-  variable: "--font-fantasque-sans",
-  display: "swap",
-  src: [
-    {
-      path: "../style/font/FantasqueSansMNerdFont-Regular.ttf",
-      weight: "400",
-      style: "normal",
-    },
-    {
-      path: "../style/font/FantasqueSansMNerdFontPropo-Bold.ttf",
-      weight: "700",
-      style: "normal",
-    },
-  ],
-});
-
-const fantasqueMono = localFont({
-  variable: "--font-fantasque-mono",
-  display: "swap",
-  src: "../style/font/FantasqueSansMNerdFont-Regular.ttf",
-});
 
 export const metadata: Metadata = {
   title: {

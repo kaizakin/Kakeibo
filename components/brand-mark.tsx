@@ -7,7 +7,7 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
       </span>
       {compact ? null : (
         <span className="text-lg font-semibold tracking-[-0.04em] text-ink">
-          KinCtx
+          Kakeibo
         </span>
       )}
     </span>

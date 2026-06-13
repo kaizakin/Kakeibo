@@ -20,7 +20,7 @@ export function SiteHeader() {
     >
       <div className="page-container flex h-16 items-center justify-between">
         <Link
-          aria-label="KinCtx home"
+          aria-label="Kakeibo home"
           href="/"
           transitionTypes={["nav-back"]}
           className="rounded-xl outline-none ring-indigo-action/30 focus-visible:ring-4"

@@ -1,23 +1,36 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { Toaster } from "sonner";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const fantasqueSans = localFont({
+  variable: "--font-fantasque-sans",
+  display: "swap",
+  src: [
+    {
+      path: "../style/font/FantasqueSansMNerdFont-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../style/font/FantasqueSansMNerdFontPropo-Bold.ttf",
+      weight: "700",
+      style: "normal",
+    },
+  ],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const fantasqueMono = localFont({
+  variable: "--font-fantasque-mono",
+  display: "swap",
+  src: "../style/font/FantasqueSansMNerdFont-Regular.ttf",
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "KinCtx — Financial clarity for shared lives",
-    template: "%s | KinCtx",
+    default: "Kakeibo - Financial clarity for shared lives",
+    template: "%s | Kakeibo",
   },
   description:
     "Audit messy shared-expense records, explain every balance, and settle debt with confidence.",
@@ -31,7 +44,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${fantasqueSans.variable} ${fantasqueMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <SiteHeader />

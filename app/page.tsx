@@ -100,7 +100,7 @@ export default function HomePage() {
                 <span className="text-sage-600">explainable.</span>
               </h1>
               <p className="mt-7 max-w-2xl text-lg leading-8 text-muted sm:text-xl">
-                KinCtx is not another expense log. It is an intelligent data
+                Kakeibo is not another expense log. It is an intelligent data
                 auditing and debt settlement machine built to untangle
                 corrupted histories and produce balances everyone can trust.
               </p>
@@ -245,7 +245,7 @@ export default function HomePage() {
               From unreliable records to defensible settlements.
             </h2>
             <p className="mt-5 text-lg leading-8 text-muted">
-              KinCtx treats every balance as a conclusion that must be proven,
+              Kakeibo treats every balance as a conclusion that must be proven,
               not merely displayed.
             </p>
           </div>

@@ -8,12 +8,12 @@ import { authConfig } from "./auth.config";
  * This file runs on the Node.js runtime only (not Edge).
  */
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
   ...authConfig,
+  adapter: PrismaAdapter(prisma),
+  session: { strategy: "jwt" },
   callbacks: {
     ...authConfig.callbacks,
-    session({ session, token }) {
-      // Attach the user ID from the JWT token to the session object
+    async session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub;
       }

@@ -1,6 +1,6 @@
 "use server";
 
-import { db } from "@/src/lib/db";
+import { prisma as db } from "@/src/lib/db";
 import type { Currency, SplitType } from "@prisma/client";
 
 // ---------------------------------------------------------------------------
@@ -36,6 +36,8 @@ export async function commitImportBatch(
   idempotencyKey: string,
 ): Promise<CommitImportResult> {
   try {
+    // Increase timeout from default 5000ms — committing a batch with ~43 rows
+    // creates Expense + ExpenseSplit records for each approved row.
     const result = await db.$transaction(async (tx) => {
       // ── Lock and validate batch ────────────────────────────────────────
       const batch = await tx.importBatch.findUnique({
@@ -169,7 +171,7 @@ export async function commitImportBatch(
       });
 
       return { committedCount, rejectedCount };
-    });
+    }, { timeout: 30000 });
 
     return {
       success: true,

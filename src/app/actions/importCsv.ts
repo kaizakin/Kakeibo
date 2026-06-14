@@ -1,6 +1,6 @@
 "use server";
 
-import { db } from "@/src/lib/db";
+import { prisma as db } from "@/src/lib/db";
 import { runImportPipeline } from "@/src/lib/import/pipeline";
 import type { ImportPolicy, ImportReport } from "@/src/lib/import/types";
 import type { AnomalyCode, AnomalySeverity, Currency, SplitType } from "@prisma/client";
@@ -79,6 +79,8 @@ export async function stageImport(
     const report = runImportPipeline(csvContent, policy);
 
     // ── Persist to staging tables in a single transaction ──────────────────
+    // Increase timeout from default 5000ms — the CSV can have ~43 rows, each
+    // creating an ImportRow + anomaly records, which takes >5s with Neon PG.
     const batch = await db.$transaction(async (tx) => {
       const importBatch = await tx.importBatch.create({
         data: {
@@ -127,7 +129,7 @@ export async function stageImport(
       }
 
       return importBatch;
-    });
+    }, { timeout: 30000 });
 
     return {
       success: true,

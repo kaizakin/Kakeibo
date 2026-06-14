@@ -1,6 +1,6 @@
 "use server";
 
-import { db } from "@/src/lib/db";
+import { prisma as db } from "@/src/lib/db";
 import { calculateNetBalances, type ExpenseForBalance } from "@/src/lib/finance/balance-calculator";
 import { minimizeDebts, type SimplifiedTransfer } from "@/src/lib/finance/debt-simplifier";
 import { buildAuditTrail, type AuditEntry, type ExpenseForAudit } from "@/src/lib/finance/audit-trail";

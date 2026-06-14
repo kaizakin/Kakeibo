@@ -1,0 +1,24 @@
+date,description,paid_by,amount,currency,split_type,split_with,split_details,notes
+01-01-2026,January rent,Aisha,48000,INR,equal,Aisha;Rohan;Priya;Meera,,
+05-01-2026,Groceries BigBasket,Priya,2340,INR,equal,Aisha;Rohan;Priya;Meera,,
+10-01-2026,Wifi bill,Rohan,1199,INR,equal,Aisha;Rohan;Priya;Meera,,
+15-01-2026,Trip to Goa expenses,Aisha,120,USD,equal,Aisha;Rohan;Priya,,currency ambiguity — USD used
+20-01-2026,Electricity bill,Aisha,"1,800",INR,equal,Aisha;Rohan;Priya;Meera,,comma in amount
+25-01-2026,Dinner out,Rohan,2400,INR,equal,Aisha;Rohan;Priya;Meera,,
+01-02-2026,February rent,Aisha,48000,INR,equal,Aisha;Rohan;Priya;Meera,,
+05-02-2026,Groceries Meera,Meera,1950,INR,equal,Aisha;Rohan;Priya;Meera,,
+10-02-2026,Expense with Meera after leaving,Priya,1500,INR,equal,Aisha;Rohan;Priya;Meera,,Meera left Mar 31 — this is before, OK
+02-04-2026,Groceries after Meera left,Priya,2640,INR,equal,Aisha;Rohan;Priya;Meera,,MEMBERSHIP VIOLATION — Meera left Mar 31
+05-04-2026,Duplicate utility payment,Rohan,1199,INR,equal,Aisha;Rohan;Priya,,
+05-04-2026,Duplicate utility payment,Rohan,1199,INR,equal,Aisha;Rohan;Priya,,EXACT DUPLICATE of row above
+06-04-2026,Conflicting dinner expense,Aisha,2400,INR,equal,Aisha;Rohan;Priya,,
+06-04-2026,Conflicting dinner expense,Rohan,2450,INR,equal,Aisha;Rohan;Priya,,CONFLICTING DUPLICATE — same description different payer/amount
+07-04-2026,Rohan paid Aisha 2000,Rohan,2000,INR,,Aisha,,SETTLEMENT MISCLASSIFICATION — looks like a repayment
+08-04-2026,Negative balance correction,Rohan,-500,INR,equal,Aisha;Rohan;Priya,,NEGATIVE AMOUNT
+09-04-2026,Item with comma amount,Aisha,"2,300/-",INR,equal,Aisha;Rohan;Priya,,NUMBER FORMAT — slash-dash notation
+10-04-2026,Missing amount field,Priya,,INR,equal,Aisha;Rohan;Priya,,MISSING CRITICAL FIELD — amount empty
+11-04-2026,Percentage split expense,Priya,2000,INR,percentage,Aisha;Rohan;Priya,Aisha 30%; Rohan 30%; Priya 35%,INVALID SPLIT MATH — sums to 95% not 100%
+12-04-2026,Expense with unknown user,Rohan,3200,INR,equal,Aisha;Rohan;Priya;Dev,,UNKNOWN GUEST USER — Dev not registered
+13-04-2026,Zero value adjustment,Aisha,0,INR,equal,Aisha;Rohan;Priya,,ZERO VALUE TRANSACTION
+14-04-2099,Future dated expense,Sam,1500,INR,equal,Aisha;Sam;Rohan;Priya,,"FUTURE DATED — intentionally in 2099"
+15-04-2026,Share-based scooter rental,Priya,3600,INR,share,Aisha;Rohan;Priya;Sam,Aisha 1; Rohan 2; Priya 1; Sam 2,SHARE split type — ratio based

@@ -135,7 +135,7 @@ export function runImportPipeline(
  * Attempt to build a database-ready CleanExpenseRecord from a parsed row.
  * Returns null if any required field is missing or invalid.
  */
-function tryBuildCleanRecord(
+export function tryBuildCleanRecord(
   row: ParsedExpenseRow,
   policy: ImportPolicy,
 ): CleanExpenseRecord | null {
@@ -180,7 +180,7 @@ function tryBuildCleanRecord(
  * Build NormalizedSplit[] based on the split type.
  * Uses integer arithmetic throughout — no floating point for money.
  */
-function buildSplits(
+export function buildSplits(
   row: ParsedExpenseRow,
   splitType: string,
 ): NormalizedSplit[] | null {

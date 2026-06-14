@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
 import { CheckIcon, ArrowRightIcon } from "@/components/icons";
+import {
+  updateImportRow,
+  type ImportRowEdit,
+  type UpdateImportRowResult,
+} from "@/src/app/actions/updateImportRow";
 import type { ImportRowReport, ImportAnomaly, CleanExpenseRecord } from "@/src/lib/import/types";
 import type { RowDecision } from "@/src/app/actions/commitImport";
 
@@ -16,6 +21,18 @@ interface ReviewTableProps {
   rows: ImportRowReport[];
   onCommit: (decisions: RowDecision[]) => void;
   isCommitting: boolean;
+}
+
+/** Editing state for a single row. */
+interface RowEditState {
+  description: string;
+  payer: string;
+  amount: string;
+  date: string;
+  splitType: string;
+  splitWith: string;
+  splitDetails: string;
+  isSaving: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -32,7 +49,6 @@ function fmtCents(cents: number): string {
 function splitSummary(clean: CleanExpenseRecord): string {
   return clean.splits
     .map((s) => {
-      // Try to find the user name from rawData — fall back to userId
       const name = clean.rawData.split_with?.split(";").map((n) => n.trim())[clean.splits.indexOf(s)] ?? s.userId.slice(0, 8);
       return `${name}: ${fmtCents(s.owedAmountInCents)}`;
     })
@@ -44,14 +60,31 @@ function hasErrorAnomalies(row: ImportRowReport): boolean {
   return row.anomalies.some((a) => a.severity === "ERROR");
 }
 
+/** Convert raw date from any format to DD-MM-YYYY. */
+function toDDMMYYYY(dateStr: string): string {
+  if (!dateStr) return "";
+  // Already DD-MM-YYYY
+  if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) return dateStr;
+  // ISO YYYY-MM-DD
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr);
+  if (isoMatch) return `${isoMatch[3]}-${isoMatch[2]}-${isoMatch[1]}`;
+  return dateStr;
+}
+
 // ---------------------------------------------------------------------------
 // Review Table
 // ---------------------------------------------------------------------------
 
-export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) {
+export function ReviewTable({ rows: initialRows, onCommit, isCommitting }: ReviewTableProps) {
+  const [rows, setRows] = useState<ImportRowReport[]>(initialRows);
+
+  // Sync local rows state when the parent provides new data (e.g. re-upload)
+  useEffect(() => {
+    setRows(initialRows);
+  }, [initialRows]);
   const [decisions, setDecisions] = useState<Map<string, "APPROVED" | "REJECTED">>(() => {
     const initial = new Map<string, "APPROVED" | "REJECTED">();
-    for (const row of rows) {
+    for (const row of initialRows) {
       if (!row.requiresReview) {
         initial.set(String(row.rowNumber), "APPROVED");
       }
@@ -61,6 +94,7 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
 
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [filter, setFilter] = useState<"all" | "clean" | "review">("all");
+  const [editingRows, setEditingRows] = useState<Map<number, RowEditState>>(new Map());
 
   // Memoized counts
   const errorFreeCount = useMemo(
@@ -68,29 +102,23 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
     [rows],
   );
 
+  // ── Expand / collapse ───────────────────────────────────────────────────
   const toggleRow = useCallback((rowNumber: number) => {
     setExpandedRows((prev) => {
       const next = new Set(prev);
-      if (next.has(rowNumber)) {
-        next.delete(rowNumber);
-      } else {
-        next.add(rowNumber);
-      }
+      if (next.has(rowNumber)) next.delete(rowNumber);
+      else next.add(rowNumber);
       return next;
     });
-
-    // Scroll to details after React has rendered the expanded section
     setTimeout(() => {
       const el = document.getElementById(`details-${rowNumber}`);
       if (el) {
-        el.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }, 100);
   }, []);
 
+  // ── Decisions ───────────────────────────────────────────────────────────
   const setDecision = useCallback(
     (rowNumber: number, decision: "APPROVED" | "REJECTED") => {
       setDecisions((prev) => {
@@ -102,6 +130,128 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
     [],
   );
 
+  // ── Start editing a row ─────────────────────────────────────────────────
+  const startEditing = useCallback((row: ImportRowReport) => {
+    setEditingRows((prev) => {
+      const next = new Map(prev);
+      next.set(row.rowNumber, {
+        description: row.rawData.description ?? "",
+        payer: row.rawData.paid_by ?? "",
+        amount: row.rawData.amount ?? "",
+        date: toDDMMYYYY(row.rawData.date ?? ""),
+        splitType: row.rawData.split_type ?? "equal",
+        splitWith: row.rawData.split_with ?? "",
+        splitDetails: row.rawData.split_details ?? "",
+        isSaving: false,
+      });
+      return next;
+    });
+    // Expand the row so the split editor is visible
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      next.add(row.rowNumber);
+      return next;
+    });
+  }, []);
+
+  // ── Cancel editing ──────────────────────────────────────────────────────
+  const cancelEditing = useCallback((rowNumber: number) => {
+    setEditingRows((prev) => {
+      const next = new Map(prev);
+      next.delete(rowNumber);
+      return next;
+    });
+  }, []);
+
+  // ── Update an edit field ────────────────────────────────────────────────
+  const updateEditField = useCallback(
+    (rowNumber: number, field: keyof RowEditState, value: string) => {
+      setEditingRows((prev) => {
+        const next = new Map(prev);
+        const current = next.get(rowNumber);
+        if (current) {
+          next.set(rowNumber, { ...current, [field]: value });
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
+  // ── Save edited row ─────────────────────────────────────────────────────
+  const saveEditing = useCallback(async (rowNumber: number) => {
+    const editState = editingRows.get(rowNumber);
+    if (!editState) return;
+
+    const row = rows.find((r) => r.rowNumber === rowNumber);
+    if (!row?.id) {
+      toast.error("Cannot edit this row: missing database ID");
+      return;
+    }
+
+    // Mark as saving
+    setEditingRows((prev) => {
+      const next = new Map(prev);
+      next.set(rowNumber, { ...editState, isSaving: true });
+      return next;
+    });
+
+    const edits: ImportRowEdit = {
+      description: editState.description,
+      payer: editState.payer,
+      amount: editState.amount,
+      paidByUserId: row.cleanRecord?.paidByUserId ?? null,
+      date: editState.date,
+      splitType: editState.splitType,
+      splitWith: editState.splitWith,
+      splitDetails: editState.splitDetails,
+    };
+
+    const result: UpdateImportRowResult = await updateImportRow(row.id, edits);
+
+    if (result.success && result.updatedRow) {
+      // Update the row in local state
+      setRows((prev) =>
+        prev.map((r) =>
+          r.rowNumber === rowNumber
+            ? { ...r, ...result.updatedRow! }
+            : r,
+        ),
+      );
+
+      // Reset decision for this row (needs fresh review)
+      setDecisions((prev) => {
+        const next = new Map(prev);
+        next.delete(String(rowNumber));
+        return next;
+      });
+
+      // Exit edit mode
+      setEditingRows((prev) => {
+        const next = new Map(prev);
+        next.delete(rowNumber);
+        return next;
+      });
+
+      const anomalyCount = result.updatedRow.anomalies.length;
+      toast.success("Row updated", {
+        description: anomalyCount > 0
+          ? `Re-validated — ${anomalyCount} anomaly(ies) detected`
+          : "Re-validated — all clear",
+      });
+    } else {
+      toast.error("Failed to update row", {
+        description: result.error ?? "Unknown error",
+      });
+      setEditingRows((prev) => {
+        const next = new Map(prev);
+        next.set(rowNumber, { ...editState, isSaving: false });
+        return next;
+      });
+    }
+  }, [editingRows, rows]);
+
+  // ── Commit ──────────────────────────────────────────────────────────────
   const handleCommit = useCallback(() => {
     const rowDecisions: RowDecision[] = Array.from(decisions.entries()).map(
       ([rowNumberStr, decision]) => ({
@@ -112,7 +262,7 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
     onCommit(rowDecisions);
   }, [decisions, onCommit]);
 
-  // Filter rows
+  // ── Filter rows ─────────────────────────────────────────────────────────
   const filteredRows = rows.filter((row) => {
     if (filter === "all") return true;
     if (filter === "clean") return !row.requiresReview;
@@ -127,6 +277,140 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
   ).length;
   const needsDecisionCount = rows.filter((r) => r.requiresReview).length;
 
+  // ── Render helpers ──────────────────────────────────────────────────────
+
+  /** Get the edit state for a row, if currently editing. */
+  const getEdit = (rowNumber: number): RowEditState | undefined =>
+    editingRows.get(rowNumber);
+
+  /** Render editable description cell. */
+  const renderDescription = (row: ImportRowReport) => {
+    const edit = getEdit(row.rowNumber);
+    if (edit) {
+      return (
+        <input
+          type="text"
+          value={edit.description}
+          onChange={(e) => updateEditField(row.rowNumber, "description", e.target.value)}
+          className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm text-ink outline-none transition focus:border-indigo-action focus:ring-2 focus:ring-indigo-action/10"
+          onClick={(e) => e.stopPropagation()}
+        />
+      );
+    }
+    return (
+      <div
+        className="truncate font-medium text-ink"
+        title={row.cleanRecord?.description ?? row.rawData.description ?? "—"}
+      >
+        {row.cleanRecord?.description ?? row.rawData.description ?? "—"}
+      </div>
+    );
+  };
+
+  /** Render editable payer cell. */
+  const renderPayer = (row: ImportRowReport) => {
+    const edit = getEdit(row.rowNumber);
+    if (edit) {
+      return (
+        <input
+          type="text"
+          value={edit.payer}
+          onChange={(e) => updateEditField(row.rowNumber, "payer", e.target.value)}
+          className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm text-ink outline-none transition focus:border-indigo-action focus:ring-2 focus:ring-indigo-action/10"
+          onClick={(e) => e.stopPropagation()}
+        />
+      );
+    }
+    return (
+      <div className="break-words text-sm text-muted">
+        {row.rawData.paid_by || "—"}
+      </div>
+    );
+  };
+
+  /** Render editable amount cell. */
+  const renderAmount = (row: ImportRowReport) => {
+    const edit = getEdit(row.rowNumber);
+    if (edit) {
+      return (
+        <input
+          type="text"
+          value={edit.amount}
+          onChange={(e) => updateEditField(row.rowNumber, "amount", e.target.value)}
+          placeholder="e.g. 1200"
+          className="w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-right font-mono text-sm text-ink outline-none transition focus:border-indigo-action focus:ring-2 focus:ring-indigo-action/10"
+          onClick={(e) => e.stopPropagation()}
+        />
+      );
+    }
+    return (
+      <div className="break-words font-mono text-sm font-medium text-ink">
+        {row.cleanRecord?.amountInCents
+          ? fmtCents(row.cleanRecord.amountInCents)
+          : row.rawData.amount || "—"}
+      </div>
+    );
+  };
+
+  /** Render splits cell. */
+  const renderSplits = (row: ImportRowReport) => {
+    const edit = getEdit(row.rowNumber);
+    if (edit) {
+      return (
+        <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
+          <select
+            value={edit.splitType}
+            onChange={(e) => updateEditField(row.rowNumber, "splitType", e.target.value)}
+            className="mb-1 w-full rounded-lg border border-line bg-white px-2.5 py-1 text-xs text-ink outline-none transition focus:border-indigo-action focus:ring-2 focus:ring-indigo-action/10"
+          >
+            <option value="equal">Equal</option>
+            <option value="exact">Exact</option>
+            <option value="percentage">Percentage</option>
+            <option value="share">Share</option>
+          </select>
+          <input
+            type="text"
+            value={edit.splitWith}
+            onChange={(e) => updateEditField(row.rowNumber, "splitWith", e.target.value)}
+            placeholder="Names (; separated)"
+            className="w-full rounded-lg border border-line bg-white px-2.5 py-1 text-xs text-ink outline-none transition focus:border-indigo-action focus:ring-2 focus:ring-indigo-action/10"
+          />
+          <input
+            type="text"
+            value={edit.splitDetails}
+            onChange={(e) => updateEditField(row.rowNumber, "splitDetails", e.target.value)}
+            placeholder="Name value; Name value (for exact/%)"
+            className="w-full rounded-lg border border-line bg-white px-2.5 py-1 text-xs text-ink outline-none transition focus:border-indigo-action focus:ring-2 focus:ring-indigo-action/10"
+          />
+        </div>
+      );
+    }
+
+    if (row.cleanRecord?.splits && row.cleanRecord.splits.length > 0) {
+      return (
+        <div className="break-words text-xs text-muted leading-relaxed" title={splitSummary(row.cleanRecord)}>
+          {splitSummary(row.cleanRecord)}
+        </div>
+      );
+    }
+    if (row.rawData.split_details) {
+      return (
+        <div className="break-words text-xs text-muted leading-relaxed" title={row.rawData.split_details}>
+          {row.rawData.split_details}
+        </div>
+      );
+    }
+    if (row.rawData.split_with) {
+      return (
+        <div className="break-words text-xs text-muted leading-relaxed" title={`Equal (${row.rawData.split_with.replace(/;/g, ", ")})`}>
+          Equal ({row.rawData.split_with.replace(/;/g, ", ")})
+        </div>
+      );
+    }
+    return <div className="text-xs text-muted">—</div>;
+  };
+
+  // ── Render ──────────────────────────────────────────────────────────────
   return (
     <div>
       {/* Controls bar */}
@@ -164,7 +448,6 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
             type="button"
             onClick={() => {
               const next = new Map(decisions);
-              // Approve only rows with no ERROR anomalies
               for (const row of rows) {
                 if (!hasErrorAnomalies(row)) {
                   next.set(String(row.rowNumber), "APPROVED");
@@ -228,65 +511,25 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
           {
             key: "description",
             header: "Description",
-            render: (row: ImportRowReport) => (
-              <div 
-                className="truncate font-medium text-ink"
-                title={row.cleanRecord?.description ?? row.rawData.description ?? "—"}
-              >
-                {row.cleanRecord?.description ?? row.rawData.description ?? "—"}
-              </div>
-            ),
+            render: renderDescription,
             className: "w-[200px]",
           },
           {
             key: "payer",
             header: "Payer",
-            render: (row: ImportRowReport) => (
-              <div className="break-words text-sm text-muted">
-                {row.rawData.paid_by || "—"}
-              </div>
-            ),
+            render: renderPayer,
             className: "w-[100px]",
           },
           {
             key: "amount",
             header: "Amount",
-            render: (row: ImportRowReport) => (
-              <div className="break-words font-mono text-sm font-medium text-ink">
-                {row.cleanRecord?.amountInCents
-                  ? fmtCents(row.cleanRecord.amountInCents)
-                  : row.rawData.amount || "—"}
-              </div>
-            ),
+            render: renderAmount,
             className: "w-[110px]",
           },
           {
             key: "splits",
             header: "Splits",
-            render: (row: ImportRowReport) => {
-              if (row.cleanRecord?.splits && row.cleanRecord.splits.length > 0) {
-                return (
-                  <div className="break-words text-xs text-muted leading-relaxed" title={splitSummary(row.cleanRecord)}>
-                    {splitSummary(row.cleanRecord)}
-                  </div>
-                );
-              }
-              if (row.rawData.split_details) {
-                return (
-                  <div className="break-words text-xs text-muted leading-relaxed" title={row.rawData.split_details}>
-                    {row.rawData.split_details}
-                  </div>
-                );
-              }
-              if (row.rawData.split_with) {
-                return (
-                  <div className="break-words text-xs text-muted leading-relaxed" title={`Equal (${row.rawData.split_with.replace(/;/g, ", ")})`}>
-                    Equal ({row.rawData.split_with.replace(/;/g, ", ")})
-                  </div>
-                );
-              }
-              return <div className="text-xs text-muted">—</div>;
-            },
+            render: renderSplits,
             className: "w-[280px]",
           },
           {
@@ -308,6 +551,9 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
             key: "decision",
             header: "Decision",
             render: (row: ImportRowReport) => {
+              const edit = getEdit(row.rowNumber);
+              if (edit) return null; // Hide decision while editing
+
               const decision = decisions.get(String(row.rowNumber));
 
               if (!row.requiresReview && !hasErrorAnomalies(row)) {
@@ -331,52 +577,99 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
             key: "actions",
             header: "",
             render: (row: ImportRowReport) => {
-              if (!row.requiresReview && !hasErrorAnomalies(row)) {
-                return null;
+              const edit = getEdit(row.rowNumber);
+
+              // Show Save/Cancel when editing
+              if (edit) {
+                return (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      disabled={edit.isSaving}
+                      onClick={() => saveEditing(row.rowNumber)}
+                      className="rounded-lg bg-indigo-action px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-indigo-hover disabled:cursor-wait disabled:opacity-60"
+                    >
+                      {edit.isSaving ? (
+                        <span className="inline-block size-3 animate-spin rounded-full border-2 border-white/35 border-t-white" />
+                      ) : (
+                        "Save"
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => cancelEditing(row.rowNumber)}
+                      className="rounded-lg px-2.5 py-1 text-xs font-semibold text-muted transition-colors hover:bg-gray-100 hover:text-ink"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                );
               }
+
+              // Show Approve/Reject/Edit when not editing
+              const isClean = !row.requiresReview && !hasErrorAnomalies(row);
 
               return (
                 <div className="flex items-center gap-1">
+                  {!isClean && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setDecision(row.rowNumber, "APPROVED")}
+                        className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
+                          decisions.get(String(row.rowNumber)) === "APPROVED"
+                            ? "bg-sage-100 text-sage-700"
+                            : "text-muted hover:bg-sage-50 hover:text-sage-700"
+                        }`}
+                      >
+                        Accept
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDecision(row.rowNumber, "REJECTED")}
+                        className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
+                          decisions.get(String(row.rowNumber)) === "REJECTED"
+                            ? "bg-red-50 text-red-700"
+                            : "text-muted hover:bg-red-50 hover:text-red-700"
+                        }`}
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setDecision(row.rowNumber, "APPROVED")}
+                    onClick={() => startEditing(row)}
                     className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
-                      decisions.get(String(row.rowNumber)) === "APPROVED"
-                        ? "bg-sage-100 text-sage-700"
-                        : "text-muted hover:bg-sage-50 hover:text-sage-700"
+                      edit ? "bg-indigo-soft text-indigo-action" : "text-muted hover:bg-indigo-soft hover:text-indigo-action"
                     }`}
                   >
-                    Accept
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDecision(row.rowNumber, "REJECTED")}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
-                      decisions.get(String(row.rowNumber)) === "REJECTED"
-                        ? "bg-red-50 text-red-700"
-                        : "text-muted hover:bg-red-50 hover:text-red-700"
-                    }`}
-                  >
-                    Reject
+                    Edit
                   </button>
                 </div>
               );
             },
-            className: "w-[140px]",
+            className: "w-[180px]",
           },
           {
             key: "expand",
             header: "",
-            render: (row: ImportRowReport) =>
-              row.anomalies.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => toggleRow(row.rowNumber)}
-                  className="text-xs font-medium text-indigo-action hover:underline"
-                >
-                  {expandedRows.has(row.rowNumber) ? "Less" : "Details"}
-                </button>
-              ) : null,
+            render: (row: ImportRowReport) => {
+              const edit = getEdit(row.rowNumber);
+              // Always show expand when editing (shows split editor)
+              if (edit || row.anomalies.length > 0) {
+                return (
+                  <button
+                    type="button"
+                    onClick={() => toggleRow(row.rowNumber)}
+                    className="text-xs font-medium text-indigo-action hover:underline"
+                  >
+                    {expandedRows.has(row.rowNumber) ? "Less" : "Details"}
+                  </button>
+                );
+              }
+              return null;
+            },
             className: "w-20",
           },
         ]}
@@ -385,62 +678,131 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
         emptyMessage="No rows match the current filter."
       />
 
-      {/* Expanded rows: anomalies + split breakdown */}
+      {/* Expanded rows: anomalies + split breakdown + inline split editor */}
       {filteredRows
         .filter((r) => expandedRows.has(r.rowNumber))
-        .map((row) => (
-          <div
-            key={`details-${row.rowNumber}`}
-            id={`details-${row.rowNumber}`}
-            className="mt-2 space-y-2"
-          >
-            {/* Split breakdown */}
-            {row.cleanRecord?.splits && row.cleanRecord.splits.length > 0 && (
-              <div className="rounded-xl border border-line bg-white p-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-muted">
-                  Split breakdown — Row #{row.rowNumber}
-                </p>
-                <div className="space-y-1.5">
-                  {row.cleanRecord.splits.map((s, i) => {
-                    const names = row.rawData.split_with?.split(";").map((n) => n.trim()) ?? [];
-                    const name = names[i] ?? s.userId.slice(0, 8);
-                    const payerName = row.rawData.paid_by?.trim();
-                    const isPayer = name.toLowerCase() === payerName?.toLowerCase();
-                    return (
-                      <div key={i} className="flex items-center justify-between rounded-lg bg-canvas px-3 py-2 text-sm">
-                        <span className="font-medium text-ink">
-                          {name}
-                          {isPayer && (
-                            <span className="ml-1.5 rounded bg-indigo-soft px-1.5 py-0.5 text-[10px] font-semibold text-indigo-action">
-                              Paid
-                            </span>
-                          )}
-                        </span>
-                        <span className="font-mono text-sm font-bold text-ink">
-                          {fmtCents(s.owedAmountInCents)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+        .map((row) => {
+          const edit = getEdit(row.rowNumber);
 
-            {/* Anomalies */}
-            {row.anomalies.length > 0 && (
-              <div className="rounded-xl border border-amber-line bg-amber-soft p-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-amber-ink">
-                  Anomalies — Row #{row.rowNumber}
-                </p>
-                <div className="space-y-2">
-                  {row.anomalies.map((anomaly, i) => (
-                    <AnomalyDetail key={i} anomaly={anomaly} />
-                  ))}
+          return (
+            <div
+              key={`details-${row.rowNumber}`}
+              id={`details-${row.rowNumber}`}
+              className="mt-2 space-y-2"
+            >
+              {/* Inline split editor when editing */}
+              {edit && (
+                <div className="rounded-xl border border-indigo-action/20 bg-white p-4 shadow-sm">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-indigo-action">
+                    Split editor — Row #{row.rowNumber}
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                        Split type
+                      </label>
+                      <select
+                        value={edit.splitType}
+                        onChange={(e) => updateEditField(row.rowNumber, "splitType", e.target.value)}
+                        className="block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-indigo-action focus:ring-2 focus:ring-indigo-action/10"
+                      >
+                        <option value="equal">Equal — divide evenly</option>
+                        <option value="exact">Exact — fixed amounts</option>
+                        <option value="percentage">Percentage — % of total</option>
+                        <option value="share">Share — ratio-based</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                        Date
+                      </label>
+                      <input
+                        type="text"
+                        value={edit.date}
+                        onChange={(e) => updateEditField(row.rowNumber, "date", e.target.value)}
+                        placeholder="DD-MM-YYYY"
+                        className="block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-indigo-action focus:ring-2 focus:ring-indigo-action/10"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                        Participants (; separated)
+                      </label>
+                      <input
+                        type="text"
+                        value={edit.splitWith}
+                        onChange={(e) => updateEditField(row.rowNumber, "splitWith", e.target.value)}
+                        placeholder="e.g. Aisha; Rohan; Priya"
+                        className="block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-indigo-action focus:ring-2 focus:ring-indigo-action/10"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                        Amounts (name value; name value)
+                      </label>
+                      <input
+                        type="text"
+                        value={edit.splitDetails}
+                        onChange={(e) => updateEditField(row.rowNumber, "splitDetails", e.target.value)}
+                        placeholder="e.g. Aisha 700; Rohan 400"
+                        className="block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-indigo-action focus:ring-2 focus:ring-indigo-action/10"
+                      />
+                      <p className="mt-1 text-[10px] text-muted">
+                        For exact: &ldquo;Name amount&rdquo;. For %: &ldquo;Name 30%&rdquo;. For share: &ldquo;Name 2&rdquo;
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+
+              {/* Split breakdown */}
+              {!edit && row.cleanRecord?.splits && row.cleanRecord.splits.length > 0 && (
+                <div className="rounded-xl border border-line bg-white p-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-muted">
+                    Split breakdown — Row #{row.rowNumber}
+                  </p>
+                  <div className="space-y-1.5">
+                    {row.cleanRecord.splits.map((s, i) => {
+                      const names = row.rawData.split_with?.split(";").map((n) => n.trim()) ?? [];
+                      const name = names[i] ?? s.userId.slice(0, 8);
+                      const payerName = row.rawData.paid_by?.trim();
+                      const isPayer = name.toLowerCase() === payerName?.toLowerCase();
+                      return (
+                        <div key={i} className="flex items-center justify-between rounded-lg bg-canvas px-3 py-2 text-sm">
+                          <span className="font-medium text-ink">
+                            {name}
+                            {isPayer && (
+                              <span className="ml-1.5 rounded bg-indigo-soft px-1.5 py-0.5 text-[10px] font-semibold text-indigo-action">
+                                Paid
+                              </span>
+                            )}
+                          </span>
+                          <span className="font-mono text-sm font-bold text-ink">
+                            {fmtCents(s.owedAmountInCents)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Anomalies */}
+              {row.anomalies.length > 0 && (
+                <div className="rounded-xl border border-amber-line bg-amber-soft p-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-amber-ink">
+                    Anomalies — Row #{row.rowNumber}
+                  </p>
+                  <div className="space-y-2">
+                    {row.anomalies.map((anomaly, i) => (
+                      <AnomalyDetail key={i} anomaly={anomaly} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
 
       {/* Commit bar */}
       <div className="mt-6 flex items-center justify-between rounded-2xl border border-line bg-white p-4 shadow-card">

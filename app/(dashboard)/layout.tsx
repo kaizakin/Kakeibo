@@ -81,8 +81,8 @@ export default async function DashboardLayout({
           <DashboardNav />
         </div>
       </aside>
-      <div className="min-w-0 flex-1 flex flex-col items-center">
-        <div className="w-full max-w-[1200px]">
+      <div className="min-w-0 flex-1 flex flex-col items-start">
+        <div className="w-full">
           {children}
         </div>
       </div>

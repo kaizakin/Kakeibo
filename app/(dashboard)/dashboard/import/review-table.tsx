@@ -77,6 +77,17 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
       }
       return next;
     });
+
+    // Scroll to details after React has rendered the expanded section
+    setTimeout(() => {
+      const el = document.getElementById(`details-${rowNumber}`);
+      if (el) {
+        el.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+    }, 100);
   }, []);
 
   const setDecision = useCallback(
@@ -214,10 +225,14 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
             key: "description",
             header: "Description",
             render: (row: ImportRowReport) => (
-              <span className="max-w-[160px] truncate font-medium text-ink">
+              <div 
+                className="truncate font-medium text-ink"
+                title={row.cleanRecord?.description ?? row.rawData.description ?? "—"}
+              >
                 {row.cleanRecord?.description ?? row.rawData.description ?? "—"}
-              </span>
+              </div>
             ),
+            className: "w-1/4",
           },
           {
             key: "payer",
@@ -245,27 +260,28 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
             render: (row: ImportRowReport) => {
               if (row.cleanRecord?.splits && row.cleanRecord.splits.length > 0) {
                 return (
-                  <span className="max-w-[220px] truncate text-xs text-muted" title={splitSummary(row.cleanRecord)}>
+                  <div className="truncate text-xs text-muted" title={splitSummary(row.cleanRecord)}>
                     {splitSummary(row.cleanRecord)}
-                  </span>
+                  </div>
                 );
               }
               if (row.rawData.split_details) {
                 return (
-                  <span className="max-w-[220px] truncate text-xs text-muted" title={row.rawData.split_details}>
+                  <div className="truncate text-xs text-muted" title={row.rawData.split_details}>
                     {row.rawData.split_details}
-                  </span>
+                  </div>
                 );
               }
               if (row.rawData.split_with) {
                 return (
-                  <span className="text-xs text-muted">
+                  <div className="truncate text-xs text-muted" title={`Equal (${row.rawData.split_with.replace(/;/g, ", ")})`}>
                     Equal ({row.rawData.split_with.replace(/;/g, ", ")})
-                  </span>
+                  </div>
                 );
               }
               return <span className="text-xs text-muted">—</span>;
             },
+            className: "w-[30%]",
           },
           {
             key: "status",
@@ -367,6 +383,7 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
         .map((row) => (
           <div
             key={`details-${row.rowNumber}`}
+            id={`details-${row.rowNumber}`}
             className="mt-2 space-y-2"
           >
             {/* Split breakdown */}

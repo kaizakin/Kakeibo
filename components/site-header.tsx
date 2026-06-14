@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BrandMark } from "@/components/brand-mark";
+import { signOutAction } from "@/src/app/actions/signout";
 
 const navItems = [
   { href: "/#capabilities", label: "Capabilities" },
@@ -40,13 +41,24 @@ export function SiteHeader() {
                 </Link>
               ))
             : null}
-          <Link
-            href={onDashboard ? "/login" : "/login"}
-            transitionTypes={onDashboard ? ["nav-back"] : ["nav-forward"]}
-            className="ml-2 rounded-xl bg-slate-850 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sage-300"
-          >
-            {onDashboard ? "Sign out" : "App portal"}
-          </Link>
+          {onDashboard ? (
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="ml-2 rounded-xl bg-slate-850 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sage-300"
+              >
+                Sign out
+              </button>
+            </form>
+          ) : (
+            <Link
+              href="/login"
+              transitionTypes={["nav-forward"]}
+              className="ml-2 rounded-xl bg-slate-850 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sage-300"
+            >
+              App portal
+            </Link>
+          )}
         </nav>
       </div>
     </header>

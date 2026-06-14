@@ -1,4 +1,4 @@
-import { db } from "@/src/lib/db";
+import { prisma as db } from "@/src/lib/db";
 import { getExpensesAudit } from "@/src/app/actions/getBalances";
 import { UserSelector } from "./user-selector";
 import { CalendarIcon } from "@/components/icons";

@@ -1,4 +1,4 @@
-import { db } from "@/src/lib/db";
+import { prisma as db } from "@/src/lib/db";
 import { getGroupMembers } from "@/src/app/actions/users";
 import { AddMemberForm } from "./add-member-form";
 import { RemoveMemberButton } from "./remove-member-button";

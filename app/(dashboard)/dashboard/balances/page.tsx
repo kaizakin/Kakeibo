@@ -1,4 +1,4 @@
-import { db } from "@/src/lib/db";
+import { prisma as db } from "@/src/lib/db";
 import { getGroupBalances, getSimplifiedDebts } from "@/src/app/actions/getBalances";
 import { ArrowRightIcon } from "@/components/icons";
 import Link from "next/link";

@@ -1,129 +1,181 @@
-"use client";
+import { prisma as db } from "@/src/lib/db";
+import { getGroupBalances, getSimplifiedDebts } from "@/src/app/actions/getBalances";
+import Link from "next/link";
+import {
+  AuditIcon,
+  CalendarIcon,
+  CheckIcon,
+  CurrencyIcon,
+  EyeIcon,
+  ArrowRightIcon,
+} from "@/components/icons";
 
-import { ViewTransition } from "react";
-import { motion, useReducedMotion } from "motion/react";
-import { AuditIcon, CalendarIcon, CheckIcon, EyeIcon, ShieldIcon } from "@/components/icons";
+export const metadata = { title: "Dashboard" };
 
-interface SummaryCard {
-  label: string;
-  value: string;
-  note: string;
-  tone: string;
-  icon: typeof AuditIcon;
+/** Format paise to display currency string. */
+function formatPaise(paise: number): string {
+  const rupees = Math.abs(paise) / 100;
+  const sign = paise < 0 ? "-" : "+";
+  return `${sign}₹${rupees.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-const summaries: readonly SummaryCard[] = [
-  {
-    label: "Audit status",
-    value: "Ready to review",
-    note: "Mock workspace state",
-    tone: "bg-amber-soft text-amber-ink",
-    icon: AuditIcon,
-  },
-  {
-    label: "Debt trail",
-    value: "Fully traceable",
-    note: "No magic numbers",
-    tone: "bg-indigo-soft text-indigo-action",
-    icon: EyeIcon,
-  },
-  {
-    label: "Group timeline",
-    value: "Window-aware",
-    note: "Membership-ready shell",
-    tone: "bg-sage-100 text-sage-700",
-    icon: CalendarIcon,
-  },
-] as const;
+export default async function DashboardPage() {
+  const groupId = "pine-street-house";
 
-export default function DashboardPage() {
-  const reduceMotion = useReducedMotion();
+  // Fetch data in parallel
+  const [group, balanceResult, debtResult, importCount, expenseCount] =
+    await Promise.all([
+      db.group.findUnique({
+        where: { id: groupId },
+        include: {
+          memberships: {
+            include: { user: { select: { name: true } } },
+          },
+        },
+      }),
+      getGroupBalances(groupId).catch(() => null),
+      getSimplifiedDebts(groupId).catch(() => null),
+      db.importBatch.count({ where: { groupId, status: "REVIEW" } }),
+      db.expense.count({ where: { groupId } }),
+    ]);
+
+  const activeMembers =
+    group?.memberships.filter((m) => m.leftAt === null || m.leftAt > new Date())
+      .length ?? 0;
+
+  const summaryCards = [
+    {
+      label: "Total expenses",
+      value: expenseCount.toString(),
+      note: "Committed records",
+      icon: EyeIcon,
+      tone: "bg-indigo-soft text-indigo-action",
+    },
+    {
+      label: "Active members",
+      value: activeMembers.toString(),
+      note: `of ${group?.memberships.length ?? 0} total`,
+      icon: CalendarIcon,
+      tone: "bg-sage-100 text-sage-700",
+    },
+    {
+      label: "Pending imports",
+      value: importCount.toString(),
+      note: importCount > 0 ? "Awaiting review" : "All clear",
+      icon: AuditIcon,
+      tone: importCount > 0 ? "bg-amber-soft text-amber-ink" : "bg-sage-100 text-sage-700",
+    },
+  ];
 
   return (
-    <ViewTransition
-      enter={{ "nav-forward": "nav-forward", default: "none" }}
-      exit={{ "nav-back": "nav-back", default: "none" }}
-      default="none"
-    >
-      <motion.div
-        initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-sage-200 bg-sage-50 px-3 py-1.5 text-xs font-semibold text-sage-700">
-              <ShieldIcon className="size-3.5" />
-              Mock protected route
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-[-0.045em] text-slate-950 sm:text-4xl">
-              Financial clarity center
-            </h1>
-            <p className="mt-3 max-w-2xl leading-7 text-muted">
-              The structural dashboard is ready for future audit workflows. No
-              balances, uploads, or mutations are connected in this phase.
-            </p>
-          </div>
-          <div className="rounded-xl border border-line bg-white px-4 py-3 text-sm shadow-card">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted">
-              Workspace
-            </p>
-            <p className="mt-1 font-semibold text-ink">Pine Street house</p>
-          </div>
+    <div>
+      {/* Header */}
+      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-[-0.045em] text-slate-950 sm:text-4xl">
+            Overview
+          </h1>
+          <p className="mt-2 max-w-2xl leading-7 text-muted">
+            Financial summary for {group?.name ?? "your group"}.
+          </p>
         </div>
+        <Link
+          href="/dashboard/import"
+          className="inline-flex items-center gap-2 rounded-xl bg-indigo-action px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-hover"
+        >
+          Import CSV
+          <ArrowRightIcon className="size-4" />
+        </Link>
+      </div>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {summaries.map((summary, index) => {
-            const Icon = summary.icon;
+      {/* Summary cards */}
+      <div className="mt-8 grid gap-4 md:grid-cols-3">
+        {summaryCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <article
+              key={card.label}
+              className="rounded-2xl border border-line bg-white p-5 shadow-card"
+            >
+              <span className={`grid size-10 place-items-center rounded-xl ${card.tone}`}>
+                <Icon className="size-4" />
+              </span>
+              <p className="mt-5 text-xs font-semibold uppercase tracking-[0.12em] text-muted">
+                {card.label}
+              </p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-ink">
+                {card.value}
+              </p>
+              <p className="mt-1 text-sm text-muted">{card.note}</p>
+            </article>
+          );
+        })}
+      </div>
 
-            return (
-              <motion.article
-                key={summary.label}
-                initial={reduceMotion ? false : { opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: reduceMotion ? 0 : 0.08 + index * 0.06 }}
-                className="rounded-2xl border border-line bg-white p-5 shadow-card"
-              >
-                <span className={`grid size-10 place-items-center rounded-xl ${summary.tone}`}>
-                  <Icon className="size-4.5" />
-                </span>
-                <p className="mt-5 text-xs font-semibold uppercase tracking-[0.12em] text-muted">
-                  {summary.label}
-                </p>
-                <p className="mt-2 font-semibold tracking-tight text-ink">{summary.value}</p>
-                <p className="mt-1 text-sm text-muted">{summary.note}</p>
-              </motion.article>
-            );
-          })}
-        </div>
-
-        <section className="mt-6 rounded-3xl border border-line bg-white p-6 shadow-card sm:p-8">
-          <div className="flex flex-col justify-between gap-4 border-b border-line pb-6 sm:flex-row sm:items-center">
+      {/* Simplified debts */}
+      {debtResult && debtResult.transfers.length > 0 && (
+        <section className="mt-6 rounded-2xl border border-line bg-white p-6 shadow-card">
+          <div className="flex items-center justify-between border-b border-line pb-4">
             <div>
-              <p className="text-sm font-semibold text-ink">Phase 1 readiness</p>
+              <p className="text-sm font-semibold text-ink">Settlement plan</p>
               <p className="mt-1 text-sm text-muted">
-                Frontend contracts established before financial logic begins.
+                Minimum {debtResult.transfers.length} transfer{debtResult.transfers.length !== 1 ? "s" : ""} to settle all debts
               </p>
             </div>
-            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-sage-100 px-3 py-1.5 text-xs font-semibold text-sage-700">
-              <CheckIcon className="size-3.5" />
-              Foundation complete
-            </span>
+            <Link
+              href="/dashboard/balances"
+              className="text-sm font-semibold text-indigo-action hover:underline"
+            >
+              View details →
+            </Link>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            {[
-              ["Design system", "Light-only tokens and responsive layout"],
-              ["Portal shell", "Validated mock authentication flow"],
-              ["Route structure", "Dashboard group ready for a future guard"],
-            ].map(([title, description]) => (
-              <div key={title} className="rounded-2xl bg-canvas p-4">
-                <p className="text-sm font-semibold text-ink">{title}</p>
-                <p className="mt-2 text-sm leading-6 text-muted">{description}</p>
+          <div className="mt-4 space-y-3">
+            {debtResult.transfers.map((t, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between rounded-xl bg-canvas p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="grid size-8 place-items-center rounded-lg bg-amber-soft text-amber-ink text-xs font-bold">
+                    {t.fromUserName.charAt(0)}
+                  </span>
+                  <span className="text-sm font-semibold text-ink">
+                    {t.fromUserName}
+                  </span>
+                  <ArrowRightIcon className="size-4 text-muted" />
+                  <span className="grid size-8 place-items-center rounded-lg bg-sage-100 text-sage-700 text-xs font-bold">
+                    {t.toUserName.charAt(0)}
+                  </span>
+                  <span className="text-sm font-semibold text-ink">
+                    {t.toUserName}
+                  </span>
+                </div>
+                <span className="text-sm font-bold text-ink">
+                  ₹{(t.amountInCents / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </span>
               </div>
             ))}
           </div>
         </section>
-      </motion.div>
-    </ViewTransition>
+      )}
+
+      {/* Quick links */}
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        {[
+          { href: "/dashboard/import", label: "Import CSV", desc: "Upload and review expense data" },
+          { href: "/dashboard/balances", label: "Balances", desc: "View net positions and settlements" },
+          { href: "/dashboard/audit", label: "Audit Trail", desc: "Trace every balance to its source" },
+        ].map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            className="rounded-2xl border border-line bg-white p-5 shadow-card transition-shadow hover:shadow-lift"
+          >
+            <p className="text-sm font-semibold text-ink">{link.label}</p>
+            <p className="mt-2 text-sm text-muted">{link.desc}</p>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -1,6 +1,19 @@
-import { PrismaClient } from "@prisma/client";
+import "dotenv/config";
+import { Pool } from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const prisma = new PrismaClient();
+// Prisma v7 with custom generator output (see schema.prisma) requires
+// the adapter pattern for the generated PrismaClient.
+import { PrismaClient } from "./generated/prisma/client";
+
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL is not set in .env file");
+}
+
+const pool = new Pool({ connectionString: databaseUrl, max: 2 });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 /**
  * Seed the database with the Pine Street House scenario.

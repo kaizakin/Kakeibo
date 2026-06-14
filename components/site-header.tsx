@@ -11,7 +11,7 @@ export function SiteHeader() {
 
   return (
     <header
-      className="fixed left-1/2 top-4 z-50 w-full max-w-4xl -translate-x-1/2 px-4"
+      className="sticky top-4 z-50 mx-auto w-full max-w-4xl px-4 mb-4"
       style={{ viewTransitionName: "persistent-nav" }}
     >
       <div className="flex h-14 items-center justify-between rounded-[20px] bg-[#2a2a2a] px-4 shadow-lg ring-1 ring-white/10">

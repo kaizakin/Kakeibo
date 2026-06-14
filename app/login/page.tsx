@@ -15,54 +15,22 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="page-container grid flex-1 items-center gap-10 py-12 lg:grid-cols-2 lg:py-20">
-      {/* Left panel — info */}
-      <section className="hidden rounded-3xl bg-slate-850 p-10 text-white shadow-lift lg:block">
-        <span className="grid size-12 place-items-center rounded-2xl bg-sage-400 text-slate-950">
-          <ShieldIcon className="size-6" />
-        </span>
-        <p className="mt-12 text-sm font-semibold uppercase tracking-[0.16em] text-sage-300">
-          The app portal
-        </p>
-        <h1 className="text-balance mt-4 text-4xl font-semibold tracking-[-0.055em]">
-          A calm workspace for complicated financial histories.
-        </h1>
-        <p className="mt-5 max-w-lg leading-7 text-sage-100/75">
-          Sign in with your Google account to access the dashboard. Your
-          identity is verified through OAuth — no passwords stored on our
-          servers.
-        </p>
-        <div className="mt-10 space-y-4 border-t border-white/10 pt-8">
-          {[
-            "Audit changes before they affect balances",
-            "Keep every settlement traceable",
-            "Respect membership windows by default",
-          ].map((item) => (
-            <div key={item} className="flex items-center gap-3 text-sm text-sage-100">
-              <span className="grid size-6 place-items-center rounded-full bg-white/10 text-sage-300">
-                <CheckIcon className="size-3.5" />
-              </span>
-              {item}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Right panel — sign in */}
-      <section className="mx-auto w-full max-w-md">
-        <div className="mb-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-sage-600">
+    <div className="page-container flex flex-1 items-center justify-center px-4 py-12 lg:py-20">
+      {/* Sign in panel */}
+      <section className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#9353d3]">
             Welcome
           </p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.045em] text-slate-950">
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.045em] text-[#1a1a1a]">
             Sign in to Kakeibo
           </h2>
-          <p className="mt-3 leading-7 text-muted">
+          <p className="mt-3 leading-7 text-gray-500">
             Use your Google account to access the expense management dashboard.
           </p>
         </div>
 
-        <div className="rounded-3xl border border-line bg-white p-6 shadow-card sm:p-8">
+        <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
           <form
             action={async () => {
               "use server";
@@ -71,7 +39,7 @@ export default async function LoginPage() {
           >
             <button
               type="submit"
-              className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-line bg-white px-5 py-3 text-sm font-semibold text-ink shadow-sm transition-colors hover:bg-sage-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-action/25"
+              className="inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-[#1a1a1a] shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gray-100"
             >
               <svg className="size-5" viewBox="0 0 24 24" aria-hidden="true">
                 <path
@@ -96,22 +64,22 @@ export default async function LoginPage() {
           </form>
 
           <div className="mt-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-line" />
-            <span className="text-xs font-medium text-muted">Secure OAuth 2.0</span>
-            <div className="h-px flex-1 bg-line" />
+            <div className="h-px flex-1 bg-gray-100" />
+            <span className="text-xs font-medium text-gray-400">Secure OAuth 2.0</span>
+            <div className="h-px flex-1 bg-gray-100" />
           </div>
 
-          <p className="mt-5 text-center text-sm leading-6 text-muted">
+          <p className="mt-5 text-center text-sm leading-6 text-gray-500">
             Your account data is managed through Google&apos;s secure
             authentication. We only access your name and email.
           </p>
         </div>
 
-        <p className="mt-6 text-center text-sm text-muted">
+        <p className="mt-6 text-center text-sm text-gray-500">
           Need context first?{" "}
           <Link
             href="/"
-            className="font-semibold text-sage-700 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sage-200"
+            className="font-semibold text-[#9353d3] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-purple-200"
           >
             Return to the overview
           </Link>

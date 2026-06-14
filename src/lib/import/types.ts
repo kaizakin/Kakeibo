@@ -123,6 +123,8 @@ export interface CleanExpenseRecord {
 
 export interface ImportRowReport {
   rowNumber: number;
+  /** Database ID of the ImportRow record (set after staging). */
+  id: string | null;
   rawData: Record<string, string>;
   cleanRecord: CleanExpenseRecord | null;
   anomalies: ImportAnomaly[];

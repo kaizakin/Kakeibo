@@ -98,6 +98,7 @@ export function runImportPipeline(
 
     rowReports.push({
       rowNumber: row.rowNumber,
+      id: null, // Set during staging when persisted to the database
       rawData: row.raw as unknown as Record<string, string>,
       cleanRecord,
       anomalies: rowAnomalies,

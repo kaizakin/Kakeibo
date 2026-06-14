@@ -10,7 +10,7 @@ export function isMemberAt(
 ): boolean {
   const eventTime = eventDate.getTime();
   return (
-    membership.joinedAt.getTime() < eventTime &&
+    membership.joinedAt.getTime() <= eventTime &&
     (membership.leftAt === null || eventTime < membership.leftAt.getTime())
   );
 }

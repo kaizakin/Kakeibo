@@ -290,7 +290,7 @@ const SETTLEMENT_PATTERNS = [
   /\bsettlement\b/i,
   /\bsettle\b/i,
   /\bdeposit\s+share\b/i,
-  /^(\w+)\s+paid\s+(\w+)$/i,
+  /^(\w+)\s+paid\s+(\w+)(\s+\d+)?$/i,
 ];
 
 /**

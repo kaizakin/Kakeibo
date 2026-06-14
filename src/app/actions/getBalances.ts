@@ -49,7 +49,7 @@ export async function getGroupBalances(
     select: { id: true, name: true },
   });
 
-  const userMap = new Map(users.map((u) => [u.id, u.name ?? "Unknown"]));
+  const userMap = new Map<string, string>(users.map((u) => [u.id, u.name ?? "Unknown"]));
 
   return {
     balances: netBalances.map((b) => ({

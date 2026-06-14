@@ -70,7 +70,7 @@ export function convertMinorUnits(
 
 export function parseDecimalRate(value: string): RationalRate {
   const normalized = value.trim();
-  const match = /^([1-9]\d*)(?:\.(\d+))?$/.exec(normalized);
+  const match = /^(0|[1-9]\d*)(?:\.(\d+))?$/.exec(normalized);
   if (!match) {
     throw new Error(`Invalid positive exchange rate: ${value}`);
   }

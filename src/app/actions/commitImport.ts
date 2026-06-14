@@ -8,7 +8,7 @@ import type { Currency, SplitType } from "@prisma/client";
 // ---------------------------------------------------------------------------
 
 export interface RowDecision {
-  rowId: string;
+  rowNumber: number;
   decision: "APPROVED" | "REJECTED";
 }
 
@@ -63,15 +63,15 @@ export async function commitImportBatch(
         throw new Error("This batch has been rejected and cannot be committed");
       }
 
-      // ── Build decision map ─────────────────────────────────────────────
-      const decisionMap = new Map(
-        rowDecisions.map((d) => [d.rowId, d.decision]),
+      // ── Build decision map (keyed by rowNumber) ────────────────────────
+      const decisionMap = new Map<number, "APPROVED" | "REJECTED">(
+        rowDecisions.map((d) => [d.rowNumber, d.decision]),
       );
 
       // ── Validate all NEEDS_REVIEW rows have decisions ──────────────────
       const reviewRows = batch.rows.filter((r) => r.status === "NEEDS_REVIEW");
       for (const row of reviewRows) {
-        if (!decisionMap.has(row.id)) {
+        if (!decisionMap.has(row.rowNumber)) {
           throw new Error(
             `Row ${row.rowNumber} requires review but no decision was provided`,
           );
@@ -86,7 +86,7 @@ export async function commitImportBatch(
         const decision =
           row.status === "CLEAN"
             ? "APPROVED" // Clean rows are auto-approved
-            : decisionMap.get(row.id);
+            : decisionMap.get(row.rowNumber);
 
         if (decision === "REJECTED" || !decision) {
           await tx.importRow.update({

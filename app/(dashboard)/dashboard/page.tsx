@@ -33,7 +33,7 @@ export default async function DashboardPage() {
         where: { id: groupId },
         include: {
           memberships: {
-            include: { user: { select: { name: true } } },
+            include: { user: { select: { name: true, email: true } } },
           },
         },
       }),
@@ -44,8 +44,13 @@ export default async function DashboardPage() {
     ]);
 
   const activeMembers =
-    group?.memberships.filter((m) => m.leftAt === null || m.leftAt > new Date())
-      .length ?? 0;
+    group?.memberships.filter(
+      (m) =>
+        (m.leftAt === null || m.leftAt > new Date()) &&
+        // Auto-provisioned placeholder users from CSV imports have emails like "name@group.imported.local".
+        // Only count real members that have a proper email domain.
+        !m.user.email?.includes(".imported.local"),
+    ).length ?? 0;
 
   const summaryCards = [
     {

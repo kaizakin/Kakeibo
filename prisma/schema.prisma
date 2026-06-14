@@ -1,0 +1,246 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Currency {
+  USD
+  INR
+}
+
+enum SplitType {
+  EQUAL
+  EXACT
+  PERCENTAGE
+  SHARE // Ratio-based split (e.g., "Rohan 2; Priya 1")
+}
+
+enum ImportStatus {
+  REVIEW
+  COMMITTED
+  REJECTED
+}
+
+enum ImportRowStatus {
+  CLEAN
+  NEEDS_REVIEW
+  APPROVED
+  REJECTED
+  COMMITTED
+}
+
+enum AnomalyCode {
+  CURRENCY_AMBIGUITY
+  MEMBERSHIP_VIOLATION
+  DUPLICATE
+  CONFLICTING_DUPLICATE
+  SETTLEMENT_MISCLASSIFICATION
+  NEGATIVE_AMOUNT
+  NUMBER_FORMAT_NORMALIZED
+  MISSING_CRITICAL_FIELD
+  INVALID_SPLIT_MATH
+  UNKNOWN_GUEST_USER
+  ZERO_VALUE_TRANSACTION
+  FUTURE_DATED_RECORD
+  MALFORMED_CSV_ROW
+  INVALID_DATE
+  INVALID_CURRENCY
+  INVALID_SPLIT_TYPE
+}
+
+enum AnomalySeverity {
+  INFO
+  WARNING
+  ERROR
+}
+
+// ---------------------------------------------------------------------------
+// NextAuth v5 Models
+// ---------------------------------------------------------------------------
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// Application Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id              String            @id @default(cuid())
+  name            String?
+  email           String            @unique
+  emailVerified   DateTime?
+  image           String?
+  accounts        Account[]
+  sessions        Session[]
+  memberships     GroupMembership[]
+  paidExpenses    Expense[]         @relation("ExpensePayer")
+  expenseSplits   ExpenseSplit[]
+  stagedPaidRows  ImportRow[]       @relation("StagedPayer")
+}
+
+model Group {
+  id             String            @id @default(cuid())
+  name           String
+  createdAt      DateTime          @default(now())
+  memberships    GroupMembership[]
+  expenses       Expense[]
+  importBatches  ImportBatch[]
+  mutationKeys   MutationKey[]
+}
+
+model GroupMembership {
+  id        String    @id @default(cuid())
+  groupId   String
+  userId    String
+  joinedAt  DateTime
+  leftAt    DateTime?
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([groupId, joinedAt, leftAt])
+  @@index([groupId, userId, joinedAt, leftAt])
+}
+
+model Expense {
+  id                String         @id @default(cuid())
+  groupId           String
+  paidByUserId      String
+  amountInCents     Int
+  currency          Currency
+  exchangeRateToInr Decimal        @db.Decimal(20, 8)
+  description       String
+  date              DateTime
+  createdAt         DateTime       @default(now())
+  splitType         SplitType
+  isSettlement      Boolean        @default(false)
+  sourceImportRowId String?        @unique
+  group             Group          @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  paidBy            User           @relation("ExpensePayer", fields: [paidByUserId], references: [id], onDelete: Restrict)
+  splits            ExpenseSplit[]
+  sourceImportRow   ImportRow?     @relation(fields: [sourceImportRowId], references: [id], onDelete: SetNull)
+
+  @@index([groupId, date])
+  @@index([groupId, paidByUserId, date])
+}
+
+model ExpenseSplit {
+  id                String  @id @default(cuid())
+  expenseId         String
+  userId            String
+  owedAmountInCents Int
+  expense           Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([expenseId, userId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// CSV Import Staging Models
+// ---------------------------------------------------------------------------
+
+model ImportBatch {
+  id             String       @id @default(cuid())
+  groupId        String
+  idempotencyKey String
+  status         ImportStatus @default(REVIEW)
+  createdAt      DateTime     @default(now())
+  committedAt    DateTime?
+  group          Group        @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  rows           ImportRow[]
+
+  @@unique([groupId, idempotencyKey])
+  @@index([groupId, status])
+}
+
+model ImportRow {
+  id                String          @id @default(cuid())
+  batchId           String
+  rowNumber         Int
+  rawData           Json
+  status            ImportRowStatus
+  paidByUserId      String?
+  amountInCents     Int?
+  currency          Currency?
+  exchangeRateToInr Decimal?        @db.Decimal(20, 8)
+  description       String?
+  date              DateTime?
+  splitType         SplitType?
+  isSettlement      Boolean?
+  normalizedSplits  Json?
+  batch             ImportBatch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  paidBy            User?           @relation("StagedPayer", fields: [paidByUserId], references: [id], onDelete: Restrict)
+  anomalies         ImportAnomaly[]
+  expense           Expense?
+
+  @@unique([batchId, rowNumber])
+  @@index([batchId, status])
+}
+
+model ImportAnomaly {
+  id         String          @id @default(cuid())
+  importRowId String
+  code       AnomalyCode
+  severity   AnomalySeverity
+  message    String
+  details    Json?
+  importRow  ImportRow       @relation(fields: [importRowId], references: [id], onDelete: Cascade)
+
+  @@index([importRowId, severity])
+}
+
+// ---------------------------------------------------------------------------
+// Idempotency Guard
+// ---------------------------------------------------------------------------
+
+model MutationKey {
+  id             String   @id @default(cuid())
+  groupId        String
+  idempotencyKey String
+  operation      String
+  createdAt      DateTime @default(now())
+  group          Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, idempotencyKey, operation])
+}

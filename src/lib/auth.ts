@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { db } from "@/src/lib/db";
+import { prisma } from "@/src/lib/db";
 import { authConfig } from "./auth.config";
 
 /**
@@ -8,15 +8,14 @@ import { authConfig } from "./auth.config";
  * This file runs on the Node.js runtime only (not Edge).
  */
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(db),
-  session: { strategy: "database" },
+  adapter: PrismaAdapter(prisma),
   ...authConfig,
   callbacks: {
     ...authConfig.callbacks,
-    session({ session, user }) {
-      // Attach the database user ID to the session object
-      if (session.user) {
-        session.user.id = user.id;
+    session({ session, token }) {
+      // Attach the user ID from the JWT token to the session object
+      if (session.user && token.sub) {
+        session.user.id = token.sub;
       }
       return session;
     },

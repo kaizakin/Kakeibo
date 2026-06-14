@@ -3,8 +3,8 @@
 
 :root {
   color-scheme: light;
-  --background: #f6f8f5;
-  --foreground: #17231e;
+  --background: #fafaf9;
+  --foreground: #1a1a1a;
   --duration-exit: 150ms;
   --duration-enter: 210ms;
   --duration-move: 400ms;
@@ -18,7 +18,7 @@
 }
 
 * {
-  border-color: #dfe7e1;
+  border-color: #e5e7eb;
 }
 
 html {
@@ -42,8 +42,8 @@ a {
 }
 
 ::selection {
-  background: #c4dbc9;
-  color: #17231e;
+  background: #d1d5db;
+  color: #1a1a1a;
 }
 
 .page-container {
@@ -57,10 +57,10 @@ a {
 
 .fine-grid {
   background-image:
-    linear-gradient(rgba(82, 135, 97, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(82, 135, 97, 0.055) 1px, transparent 1px);
+    linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
   background-size: 32px 32px;
-  mask-image: linear-gradient(to bottom, black 20%, transparent 90%);
+  mask-image: linear-gradient(to bottom, black 40%, transparent 90%);
 }
 
 .toast {

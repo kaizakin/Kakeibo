@@ -1,5 +1,6 @@
 import { prisma as db } from "@/src/lib/db";
 import { getGroupBalances, getSimplifiedDebts } from "@/src/app/actions/getBalances";
+import { getActiveGroupWithName } from "@/src/lib/active-group";
 import { ArrowRightIcon } from "@/components/icons";
 import Link from "next/link";
 
@@ -11,7 +12,7 @@ function formatPaise(paise: number): string {
 }
 
 export default async function BalancesPage() {
-  const groupId = "pine-street-house";
+  const { groupId, groupName } = await getActiveGroupWithName();
 
   const [balanceResult, debtResult] = await Promise.all([
     getGroupBalances(groupId).catch(() => null),

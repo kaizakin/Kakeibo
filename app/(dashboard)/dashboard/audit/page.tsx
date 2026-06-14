@@ -1,5 +1,6 @@
 import { prisma as db } from "@/src/lib/db";
 import { getExpensesAudit } from "@/src/app/actions/getBalances";
+import { getActiveGroup } from "@/src/lib/active-group";
 import { UserSelector } from "./user-selector";
 import { CalendarIcon } from "@/components/icons";
 
@@ -24,7 +25,7 @@ export default async function AuditPage({
 }: {
   searchParams: Promise<{ userId?: string }>;
 }) {
-  const groupId = "pine-street-house";
+  const groupId = await getActiveGroup();
   const params = await searchParams;
   const selectedUserId = params.userId ?? null;
 

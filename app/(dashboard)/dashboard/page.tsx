@@ -1,10 +1,10 @@
 import { prisma as db } from "@/src/lib/db";
 import { getGroupBalances, getSimplifiedDebts } from "@/src/app/actions/getBalances";
+import { getActiveGroupWithName } from "@/src/lib/active-group";
 import Link from "next/link";
 import {
   AuditIcon,
   CalendarIcon,
-  CheckIcon,
   CurrencyIcon,
   EyeIcon,
   ArrowRightIcon,
@@ -12,15 +12,8 @@ import {
 
 export const metadata = { title: "Dashboard" };
 
-/** Format paise to display currency string. */
-function formatPaise(paise: number): string {
-  const rupees = Math.abs(paise) / 100;
-  const sign = paise < 0 ? "-" : "+";
-  return `${sign}₹${rupees.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
 export default async function DashboardPage() {
-  const groupId = "pine-street-house";
+  const { groupId, groupName } = await getActiveGroupWithName();
 
   // Fetch data in parallel
   const [group, balanceResult, debtResult, importCount, expenseCount] =
@@ -76,7 +69,7 @@ export default async function DashboardPage() {
             Overview
           </h1>
           <p className="mt-2 max-w-2xl leading-7 text-muted">
-            Financial summary for {group?.name ?? "your group"}.
+            Financial summary for {groupName}.
           </p>
         </div>
         <Link

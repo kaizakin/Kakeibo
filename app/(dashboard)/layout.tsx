@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { auth } from "@/src/lib/auth";
+import { prisma as db } from "@/src/lib/db";
+import { getActiveGroup } from "@/src/lib/active-group";
+import { GroupSwitcher } from "@/components/group-switcher";
 import {
   AuditIcon,
   CalendarIcon,
   CurrencyIcon,
   EyeIcon,
   ShieldIcon,
-  ArrowRightIcon,
 } from "@/components/icons";
 
 const navItems = [
@@ -24,6 +26,34 @@ export default async function DashboardLayout({
   children: ReactNode;
 }) {
   const session = await auth();
+  const groupId = await getActiveGroup();
+
+  // Fetch group info and all available groups
+  const [activeGroup, allGroups] = await Promise.all([
+    db.group.findUnique({
+      where: { id: groupId },
+      select: { name: true },
+    }),
+    db.group.findMany({
+      select: {
+        id: true,
+        name: true,
+        _count: { select: { memberships: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  const activeGroupName = activeGroup?.name ?? groupId
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+
+  const groups = allGroups.map((g) => ({
+    id: g.id,
+    name: g.name,
+    memberCount: g._count.memberships,
+  }));
 
   return (
     <div className="page-container flex flex-1 gap-6 py-6 lg:py-8">
@@ -54,13 +84,12 @@ export default async function DashboardLayout({
             </div>
           )}
 
-          {/* Group context */}
-          <div className="mb-3 rounded-xl bg-canvas p-3">
-            <p className="text-xs font-medium text-muted">Active group</p>
-            <p className="mt-0.5 text-sm font-semibold text-ink">
-              Pine Street House
-            </p>
-          </div>
+          {/* Group switcher */}
+          <GroupSwitcher
+            activeGroupId={groupId}
+            activeGroupName={activeGroupName}
+            groups={groups}
+          />
 
           {/* Navigation */}
           <nav aria-label="Dashboard navigation">

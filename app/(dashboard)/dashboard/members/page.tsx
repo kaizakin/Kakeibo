@@ -1,5 +1,6 @@
 import { prisma as db } from "@/src/lib/db";
 import { getGroupMembers } from "@/src/app/actions/users";
+import { getActiveGroupWithName } from "@/src/lib/active-group";
 import { AddMemberForm } from "./add-member-form";
 import { RemoveMemberButton } from "./remove-member-button";
 import { ShieldIcon, CalendarIcon } from "@/components/icons";
@@ -16,7 +17,7 @@ function formatDate(dateStr: string): string {
 }
 
 export default async function MembersPage() {
-  const groupId = "pine-street-house";
+  const { groupId, groupName } = await getActiveGroupWithName();
 
   const [members, group] = await Promise.all([
     getGroupMembers(groupId),

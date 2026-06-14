@@ -9,7 +9,12 @@ import { AuditIcon, ArrowRightIcon, CheckIcon } from "@/components/icons";
 import type { ImportReport } from "@/src/lib/import/types";
 import { toast } from "sonner";
 
-const GROUP_ID = "pine-street-house";
+/** Read the active group ID from the cookie set by the server layout. */
+function getActiveGroupId(): string {
+  if (typeof document === "undefined") return "pine-street-house";
+  const match = document.cookie.match(/(?:^|;\s*)activeGroup=([^;]+)/);
+  return match?.[1] ?? "pine-street-house";
+}
 
 type Phase = "upload" | "review" | "committed";
 
@@ -45,7 +50,7 @@ export default function ImportPage() {
 
     startParsing(async () => {
       const idempotencyKey = `import-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const result: StageImportResult = await stageImport(GROUP_ID, csvContent, idempotencyKey);
+      const result: StageImportResult = await stageImport(getActiveGroupId(), csvContent, idempotencyKey);
 
       if (!result.success) {
         toast.error("Import failed", { description: result.error ?? "Unknown error" });

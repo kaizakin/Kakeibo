@@ -10,7 +10,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "prisma generate",
-    "db:validate": "prisma validate"
+    "db:validate": "prisma validate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

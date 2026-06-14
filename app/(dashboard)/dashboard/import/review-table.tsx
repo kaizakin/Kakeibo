@@ -236,27 +236,29 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
                 {row.cleanRecord?.description ?? row.rawData.description ?? "—"}
               </div>
             ),
-            className: "w-1/4",
+            className: "w-[200px]",
           },
           {
             key: "payer",
             header: "Payer",
             render: (row: ImportRowReport) => (
-              <span className="text-sm text-muted">
+              <div className="break-words text-sm text-muted">
                 {row.rawData.paid_by || "—"}
-              </span>
+              </div>
             ),
+            className: "w-[100px]",
           },
           {
             key: "amount",
             header: "Amount",
             render: (row: ImportRowReport) => (
-              <span className="font-mono text-sm font-medium text-ink">
+              <div className="break-words font-mono text-sm font-medium text-ink">
                 {row.cleanRecord?.amountInCents
                   ? fmtCents(row.cleanRecord.amountInCents)
                   : row.rawData.amount || "—"}
-              </span>
+              </div>
             ),
+            className: "w-[110px]",
           },
           {
             key: "splits",
@@ -264,28 +266,28 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
             render: (row: ImportRowReport) => {
               if (row.cleanRecord?.splits && row.cleanRecord.splits.length > 0) {
                 return (
-                  <div className="truncate text-xs text-muted" title={splitSummary(row.cleanRecord)}>
+                  <div className="break-words text-xs text-muted leading-relaxed" title={splitSummary(row.cleanRecord)}>
                     {splitSummary(row.cleanRecord)}
                   </div>
                 );
               }
               if (row.rawData.split_details) {
                 return (
-                  <div className="truncate text-xs text-muted" title={row.rawData.split_details}>
+                  <div className="break-words text-xs text-muted leading-relaxed" title={row.rawData.split_details}>
                     {row.rawData.split_details}
                   </div>
                 );
               }
               if (row.rawData.split_with) {
                 return (
-                  <div className="truncate text-xs text-muted" title={`Equal (${row.rawData.split_with.replace(/;/g, ", ")})`}>
+                  <div className="break-words text-xs text-muted leading-relaxed" title={`Equal (${row.rawData.split_with.replace(/;/g, ", ")})`}>
                     Equal ({row.rawData.split_with.replace(/;/g, ", ")})
                   </div>
                 );
               }
-              return <span className="text-xs text-muted">—</span>;
+              return <div className="text-xs text-muted">—</div>;
             },
-            className: "w-[30%]",
+            className: "w-[280px]",
           },
           {
             key: "status",
@@ -300,6 +302,7 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
                   : "CLEAN";
               return <StatusBadge status={status} />;
             },
+            className: "w-[120px]",
           },
           {
             key: "decision",
@@ -322,6 +325,7 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
                 <span className="text-xs text-muted">Undecided</span>
               );
             },
+            className: "w-[100px]",
           },
           {
             key: "actions",
@@ -358,7 +362,7 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
                 </div>
               );
             },
-            className: "w-40",
+            className: "w-[140px]",
           },
           {
             key: "expand",

@@ -30,6 +30,20 @@ export async function stageImport(
   idempotencyKey: string,
 ): Promise<StageImportResult> {
   try {
+    // ── Ensure the group exists ─────────────────────────────────────────────
+    // The group must exist before creating an ImportBatch referencing it.
+    // Auto-create if it was deleted (e.g., by db:nuke).
+    const groupName = groupId
+      .split("-")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+
+    await db.group.upsert({
+      where: { id: groupId },
+      update: {},
+      create: { id: groupId, name: groupName },
+    });
+
     // ── Idempotency check ──────────────────────────────────────────────────
     const existing = await db.importBatch.findUnique({
       where: { groupId_idempotencyKey: { groupId, idempotencyKey } },

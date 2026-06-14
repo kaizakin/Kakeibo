@@ -7,6 +7,7 @@ import {
   CalendarIcon,
   CurrencyIcon,
   EyeIcon,
+  PlusIcon,
   ArrowRightIcon,
 } from "@/components/icons";
 
@@ -82,13 +83,22 @@ export default async function DashboardPage() {
             Financial summary for {groupName}.
           </p>
         </div>
-        <Link
-          href="/dashboard/import"
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-action px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-hover"
-        >
-          Import CSV
-          <ArrowRightIcon className="size-4" />
-        </Link>
+        <div className="flex gap-3">
+          <Link
+            href="/dashboard/expenses"
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-action px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-hover"
+          >
+            <PlusIcon className="size-4" />
+            Add Expense
+          </Link>
+          <Link
+            href="/dashboard/import"
+            className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink shadow-sm transition hover:bg-canvas"
+          >
+            Import CSV
+            <ArrowRightIcon className="size-4" />
+          </Link>
+        </div>
       </div>
 
       {/* Summary cards */}

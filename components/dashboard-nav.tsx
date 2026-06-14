@@ -7,11 +7,13 @@ import {
   CalendarIcon,
   CurrencyIcon,
   EyeIcon,
+  PlusIcon,
   ShieldIcon,
 } from "@/components/icons";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: EyeIcon },
+  { href: "/dashboard/expenses", label: "Add Expense", icon: PlusIcon },
   { href: "/dashboard/import", label: "Import CSV", icon: AuditIcon },
   { href: "/dashboard/balances", label: "Balances", icon: CurrencyIcon },
   { href: "/dashboard/audit", label: "Audit Trail", icon: CalendarIcon },

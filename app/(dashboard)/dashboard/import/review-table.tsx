@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { StatusBadge } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
-import { AuditIcon, CheckIcon, ArrowRightIcon } from "@/components/icons";
-import type { ImportRowReport, ImportAnomaly } from "@/src/lib/import/types";
+import { CheckIcon, ArrowRightIcon } from "@/components/icons";
+import type { ImportRowReport, ImportAnomaly, CleanExpenseRecord } from "@/src/lib/import/types";
 import type { RowDecision } from "@/src/app/actions/commitImport";
 
 // ---------------------------------------------------------------------------
@@ -18,12 +18,37 @@ interface ReviewTableProps {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Format cents to display currency string. */
+function fmtCents(cents: number): string {
+  const abs = Math.abs(cents);
+  return `₹${(abs / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/** Build a readable split summary from a clean record. */
+function splitSummary(clean: CleanExpenseRecord): string {
+  return clean.splits
+    .map((s) => {
+      // Try to find the user name from rawData — fall back to userId
+      const name = clean.rawData.split_with?.split(";").map((n) => n.trim())[clean.splits.indexOf(s)] ?? s.userId.slice(0, 8);
+      return `${name}: ${fmtCents(s.owedAmountInCents)}`;
+    })
+    .join(", ");
+}
+
+/** Check if a row has any ERROR-level anomalies. */
+function hasErrorAnomalies(row: ImportRowReport): boolean {
+  return row.anomalies.some((a) => a.severity === "ERROR");
+}
+
+// ---------------------------------------------------------------------------
 // Review Table
 // ---------------------------------------------------------------------------
 
 export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) {
   const [decisions, setDecisions] = useState<Map<string, "APPROVED" | "REJECTED">>(() => {
-    // Auto-approve clean rows
     const initial = new Map<string, "APPROVED" | "REJECTED">();
     for (const row of rows) {
       if (!row.requiresReview) {
@@ -35,6 +60,12 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
 
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [filter, setFilter] = useState<"all" | "clean" | "review">("all");
+
+  // Memoized counts
+  const errorFreeCount = useMemo(
+    () => rows.filter((r) => !hasErrorAnomalies(r)).length,
+    [rows],
+  );
 
   const toggleRow = useCallback((rowNumber: number) => {
     setExpandedRows((prev) => {
@@ -116,7 +147,23 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
         </div>
 
         {/* Bulk actions */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              const next = new Map(decisions);
+              // Approve only rows with no ERROR anomalies
+              for (const row of rows) {
+                if (!hasErrorAnomalies(row)) {
+                  next.set(String(row.rowNumber), "APPROVED");
+                }
+              }
+              setDecisions(next);
+            }}
+            className="rounded-lg border border-sage-200 bg-sage-50 px-3 py-1.5 text-xs font-semibold text-sage-700 transition-colors hover:bg-sage-100"
+          >
+            Approve error-free ({errorFreeCount})
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -167,7 +214,7 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
             key: "description",
             header: "Description",
             render: (row: ImportRowReport) => (
-              <span className="max-w-[200px] truncate font-medium text-ink">
+              <span className="max-w-[160px] truncate font-medium text-ink">
                 {row.cleanRecord?.description ?? row.rawData.description ?? "—"}
               </span>
             ),
@@ -177,9 +224,7 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
             header: "Payer",
             render: (row: ImportRowReport) => (
               <span className="text-sm text-muted">
-                {row.cleanRecord?.paidByUserId
-                  ? row.rawData.paid_by
-                  : row.rawData.paid_by || "—"}
+                {row.rawData.paid_by || "—"}
               </span>
             ),
           },
@@ -189,10 +234,38 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
             render: (row: ImportRowReport) => (
               <span className="font-mono text-sm font-medium text-ink">
                 {row.cleanRecord?.amountInCents
-                  ? `₹${(row.cleanRecord.amountInCents / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                  ? fmtCents(row.cleanRecord.amountInCents)
                   : row.rawData.amount || "—"}
               </span>
             ),
+          },
+          {
+            key: "splits",
+            header: "Splits",
+            render: (row: ImportRowReport) => {
+              if (row.cleanRecord?.splits && row.cleanRecord.splits.length > 0) {
+                return (
+                  <span className="max-w-[220px] truncate text-xs text-muted" title={splitSummary(row.cleanRecord)}>
+                    {splitSummary(row.cleanRecord)}
+                  </span>
+                );
+              }
+              if (row.rawData.split_details) {
+                return (
+                  <span className="max-w-[220px] truncate text-xs text-muted" title={row.rawData.split_details}>
+                    {row.rawData.split_details}
+                  </span>
+                );
+              }
+              if (row.rawData.split_with) {
+                return (
+                  <span className="text-xs text-muted">
+                    Equal ({row.rawData.split_with.replace(/;/g, ", ")})
+                  </span>
+                );
+              }
+              return <span className="text-xs text-muted">—</span>;
+            },
           },
           {
             key: "status",
@@ -214,7 +287,7 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
             render: (row: ImportRowReport) => {
               const decision = decisions.get(String(row.rowNumber));
 
-              if (!row.requiresReview && !row.anomalies.some((a) => a.severity === "ERROR")) {
+              if (!row.requiresReview && !hasErrorAnomalies(row)) {
                 return <StatusBadge status="CLEAN" />;
               }
 
@@ -234,7 +307,7 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
             key: "actions",
             header: "",
             render: (row: ImportRowReport) => {
-              if (!row.requiresReview && !row.anomalies.some((a) => a.severity === "ERROR")) {
+              if (!row.requiresReview && !hasErrorAnomalies(row)) {
                 return null;
               }
 
@@ -288,22 +361,59 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
         emptyMessage="No rows match the current filter."
       />
 
-      {/* Expanded anomaly details */}
+      {/* Expanded rows: anomalies + split breakdown */}
       {filteredRows
         .filter((r) => expandedRows.has(r.rowNumber))
         .map((row) => (
           <div
             key={`details-${row.rowNumber}`}
-            className="mt-2 rounded-xl border border-amber-line bg-amber-soft p-4"
+            className="mt-2 space-y-2"
           >
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-amber-ink">
-              Anomalies — Row #{row.rowNumber}
-            </p>
-            <div className="space-y-2">
-              {row.anomalies.map((anomaly, i) => (
-                <AnomalyDetail key={i} anomaly={anomaly} />
-              ))}
-            </div>
+            {/* Split breakdown */}
+            {row.cleanRecord?.splits && row.cleanRecord.splits.length > 0 && (
+              <div className="rounded-xl border border-line bg-white p-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-muted">
+                  Split breakdown — Row #{row.rowNumber}
+                </p>
+                <div className="space-y-1.5">
+                  {row.cleanRecord.splits.map((s, i) => {
+                    const names = row.rawData.split_with?.split(";").map((n) => n.trim()) ?? [];
+                    const name = names[i] ?? s.userId.slice(0, 8);
+                    const payerName = row.rawData.paid_by?.trim();
+                    const isPayer = name.toLowerCase() === payerName?.toLowerCase();
+                    return (
+                      <div key={i} className="flex items-center justify-between rounded-lg bg-canvas px-3 py-2 text-sm">
+                        <span className="font-medium text-ink">
+                          {name}
+                          {isPayer && (
+                            <span className="ml-1.5 rounded bg-indigo-soft px-1.5 py-0.5 text-[10px] font-semibold text-indigo-action">
+                              Paid
+                            </span>
+                          )}
+                        </span>
+                        <span className="font-mono text-sm font-bold text-ink">
+                          {fmtCents(s.owedAmountInCents)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Anomalies */}
+            {row.anomalies.length > 0 && (
+              <div className="rounded-xl border border-amber-line bg-amber-soft p-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-amber-ink">
+                  Anomalies — Row #{row.rowNumber}
+                </p>
+                <div className="space-y-2">
+                  {row.anomalies.map((anomaly, i) => (
+                    <AnomalyDetail key={i} anomaly={anomaly} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ))}
 

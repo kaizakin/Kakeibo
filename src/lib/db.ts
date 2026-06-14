@@ -1,15 +1,39 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '../../prisma/generated/prisma/client';
+import { Pool } from 'pg'
+import { PrismaPg } from '@prisma/adapter-pg'
+import 'dotenv/config'
 
-const globalForPrisma = globalThis as unknown as {
-  prisma?: PrismaClient;
-};
+const createPrismaClient = () => {
+  const databaseUrl = process.env.DATABASE_URL
+  const useSsl = (() => {
+    if (!databaseUrl) return false
+    const sslMode = new URL(databaseUrl).searchParams.get('sslmode')?.toLowerCase()
+    if (!sslMode) return false
+    return !['disable', 'allow', 'prefer'].includes(sslMode)
+  })()
 
-export const db =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  });
+  // pool using the POOLED URL (DATABASE_URL)
+  const pool = new Pool({
+    connectionString: databaseUrl,
+    max: 2, //pool size for serverless 
+    ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {})
+  })
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = db;
+  const adapter = new PrismaPg(pool)
+  console.log('PrismaPg adapter created:', !!adapter);
+
+  try {
+    const client = new PrismaClient({ adapter });
+    console.log('PrismaClient instantiated successfully');
+    return client;
+  } catch (e) {
+    console.error('Error instantiating PrismaClient:', e);
+    throw e;
+  }
 }
+
+const globalForPrisma = globalThis as unknown as { prisma: ReturnType<typeof createPrismaClient> | undefined }
+
+export const prisma: PrismaClient = globalForPrisma.prisma || createPrismaClient()
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma; // singleton pattern

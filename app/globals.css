@@ -13,8 +13,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-fantasque-sans);
-  --font-mono: var(--font-fantasque-mono);
+  --font-sans: var(--font-montserrat);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 * {
@@ -28,7 +28,7 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-fantasque-sans), sans-serif;
+  font-family: var(--font-montserrat), sans-serif;
 }
 
 button,

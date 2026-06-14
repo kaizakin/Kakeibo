@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import { SiteHeader } from "@/components/site-header";
 import { fantasqueMono, fantasqueSans } from "@/style/fonts";
+import { Montserrat } from "next/font/google";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,6 +14,11 @@ export const metadata: Metadata = {
     "Audit messy shared-expense records, explain every balance, and settle debt with confidence.",
 };
 
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  variable: "--font-montserrat",
+});
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -21,7 +27,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fantasqueSans.variable} ${fantasqueMono.variable} h-full antialiased`}
+      className={`${montserrat.variable} ${fantasqueSans.variable} ${fantasqueMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <SiteHeader />

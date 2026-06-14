@@ -2,9 +2,11 @@ import type { ReactNode } from "react";
 import { auth } from "@/src/lib/auth";
 import { prisma as db } from "@/src/lib/db";
 import { getActiveGroup } from "@/src/lib/active-group";
+import { getUserGroups } from "@/src/app/actions/groups";
 import { GroupSwitcher } from "@/components/group-switcher";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { ShieldIcon } from "@/components/icons";
+import { CreateFirstGroup } from "@/components/create-first-group";
 
 export default async function DashboardLayout({
   children,
@@ -12,33 +14,38 @@ export default async function DashboardLayout({
   children: ReactNode;
 }) {
   const session = await auth();
-  const groupId = await getActiveGroup();
+  const userId = session?.user?.id;
 
-  // Fetch group info and all available groups
-  const [activeGroup, allGroups] = await Promise.all([
-    db.group.findUnique({
-      where: { id: groupId },
-      select: { name: true },
-    }),
-    db.group.findMany({
-      select: {
-        id: true,
-        name: true,
-        _count: { select: { memberships: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+  if (!userId) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-4 py-12">
+        <p className="text-muted">Please sign in to access the dashboard.</p>
+      </div>
+    );
+  }
 
-  const activeGroupName = activeGroup?.name ?? groupId
-    .split("-")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
+  // Fetch the user's groups (only groups they are a member of)
+  const userGroups = await getUserGroups(userId);
 
-  const groups = allGroups.map((g) => ({
+  // If user has no groups, show the create-first-group UI
+  if (userGroups.length === 0) {
+    return <CreateFirstGroup />;
+  }
+
+  // Determine active group
+  const cookieGroupId = await getActiveGroup();
+  const activeGroupId = cookieGroupId && userGroups.some((g) => g.id === cookieGroupId)
+    ? cookieGroupId
+    : userGroups[0].id;
+
+  const activeGroup = userGroups.find((g) => g.id === activeGroupId);
+  const activeGroupName = activeGroup?.name ?? "My Group";
+
+  const groups = userGroups.map((g) => ({
     id: g.id,
     name: g.name,
-    memberCount: g._count.memberships,
+    role: g.role,
+    memberCount: g.memberCount,
   }));
 
   return (
@@ -72,7 +79,7 @@ export default async function DashboardLayout({
 
           {/* Group switcher */}
           <GroupSwitcher
-            activeGroupId={groupId}
+            activeGroupId={activeGroupId}
             activeGroupName={activeGroupName}
             groups={groups}
           />

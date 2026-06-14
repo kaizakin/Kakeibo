@@ -17,6 +17,11 @@ enum Currency {
   INR
 }
 
+enum Role {
+  ADMIN
+  MEMBER
+}
+
 enum SplitType {
   EQUAL
   EXACT
@@ -134,6 +139,7 @@ model GroupMembership {
   id        String    @id @default(cuid())
   groupId   String
   userId    String
+  role      Role      @default(MEMBER)
   joinedAt  DateTime
   leftAt    DateTime?
   group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)

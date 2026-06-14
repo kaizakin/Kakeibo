@@ -162,6 +162,7 @@ export async function stageImport(
           data: {
             groupId,
             userId: user.id,
+            role: "MEMBER",
             joinedAt: new Date("2020-01-01"),
             leftAt: null,
           },

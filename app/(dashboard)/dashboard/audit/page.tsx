@@ -26,6 +26,14 @@ export default async function AuditPage({
   searchParams: Promise<{ userId?: string }>;
 }) {
   const groupId = await getActiveGroup();
+
+  if (!groupId) {
+    return (
+      <div className="rounded-2xl border border-line bg-white p-8 text-center">
+        <p className="text-sm text-muted">No group selected.</p>
+      </div>
+    );
+  }
   const params = await searchParams;
   const selectedUserId = params.userId ?? null;
 

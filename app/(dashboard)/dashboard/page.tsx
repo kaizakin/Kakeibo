@@ -13,7 +13,17 @@ import {
 export const metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
-  const { groupId, groupName } = await getActiveGroupWithName();
+  const activeGroup = await getActiveGroupWithName();
+
+  if (!activeGroup) {
+    return (
+      <div className="rounded-2xl border border-line bg-white p-8 text-center">
+        <p className="text-sm text-muted">No group selected. Create or select a group to get started.</p>
+      </div>
+    );
+  }
+
+  const { groupId, groupName } = activeGroup;
 
   // Fetch data in parallel
   const [group, balanceResult, debtResult, importCount, expenseCount] =

@@ -7,6 +7,7 @@ import { switchGroup, createGroup } from "@/src/app/actions/groups";
 interface GroupInfo {
   id: string;
   name: string;
+  role: string;
   memberCount: number;
 }
 
@@ -22,6 +23,7 @@ export function GroupSwitcher({ activeGroupId, activeGroupName, groups }: GroupS
   const [isCreating, startCreating] = useTransition();
   const [showCreate, setShowCreate] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
+  const [invitedEmails, setInvitedEmails] = useState<string[]>([""]);
 
   const handleSwitch = useCallback(
     (groupId: string) => {
@@ -38,14 +40,18 @@ export function GroupSwitcher({ activeGroupId, activeGroupName, groups }: GroupS
     (e: React.FormEvent) => {
       e.preventDefault();
       if (!newGroupName.trim()) return;
+      const validEmails = invitedEmails
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean);
       startCreating(async () => {
-        await createGroup(newGroupName.trim());
+        await createGroup(newGroupName.trim(), validEmails);
         setNewGroupName("");
+        setInvitedEmails([""]);
         setShowCreate(false);
         router.refresh();
       });
     },
-    [newGroupName, router],
+    [newGroupName, invitedEmails, router],
   );
 
   return (
@@ -87,7 +93,49 @@ export function GroupSwitcher({ activeGroupId, activeGroupName, groups }: GroupS
             className="mt-1.5 w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink outline-none transition focus:border-indigo-action focus:ring-2 focus:ring-indigo-action/10"
             autoFocus
           />
-          <div className="mt-2 flex items-center gap-2">
+
+          <label className="mt-3 block text-xs font-semibold text-muted">
+            Invite by email
+          </label>
+          <div className="mt-1.5 space-y-1.5">
+            {invitedEmails.map((email, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setInvitedEmails((prev) => {
+                      const next = [...prev];
+                      next[i] = e.target.value;
+                      return next;
+                    });
+                  }}
+                  placeholder="e.g. priya@example.com"
+                  className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-xs text-ink outline-none transition focus:border-indigo-action focus:ring-2 focus:ring-indigo-action/10"
+                />
+                {invitedEmails.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setInvitedEmails((prev) => prev.filter((_, idx) => idx !== i))}
+                    className="grid size-7 shrink-0 place-items-center rounded-lg text-muted hover:bg-red-50 hover:text-red-700"
+                  >
+                    <svg aria-hidden="true" className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setInvitedEmails((prev) => [...prev, ""])}
+              className="text-xs font-semibold text-indigo-action hover:underline"
+            >
+              + Add another
+            </button>
+          </div>
+
+          <div className="mt-3 flex items-center gap-2">
             <button
               type="submit"
               disabled={isCreating || !newGroupName.trim()}
@@ -100,6 +148,7 @@ export function GroupSwitcher({ activeGroupId, activeGroupName, groups }: GroupS
               onClick={() => {
                 setShowCreate(false);
                 setNewGroupName("");
+                setInvitedEmails([""]);
               }}
               className="rounded-lg px-3 py-1.5 text-xs font-semibold text-muted transition hover:bg-canvas"
             >
@@ -128,8 +177,13 @@ export function GroupSwitcher({ activeGroupId, activeGroupName, groups }: GroupS
                 {g.name.charAt(0)}
               </span>
               <span className="truncate">{g.name}</span>
-              <span className="ml-auto shrink-0 text-[10px] text-muted">
-                {g.memberCount}
+              <span className="ml-auto shrink-0 flex items-center gap-1.5">
+                {g.role === "ADMIN" && (
+                  <span className="text-[10px] font-semibold text-amber-600" title="Admin">
+                    ★
+                  </span>
+                )}
+                <span className="text-[10px] text-muted">{g.memberCount}</span>
               </span>
               {g.id === activeGroupId && (
                 <span className="size-1.5 rounded-full bg-indigo-action shrink-0" />

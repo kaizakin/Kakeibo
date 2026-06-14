@@ -29,8 +29,8 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-white shadow-card">
-      <table className="w-full table-fixed text-left text-sm">
+    <div className="rounded-2xl border border-line bg-white shadow-card overflow-x-auto">
+      <table className="w-full min-w-[900px] table-fixed text-left text-sm">
         <thead>
           <tr className="border-b border-line bg-canvas/60">
             {columns.map((col) => (

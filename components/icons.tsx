@@ -70,6 +70,14 @@ export function EyeIcon(props: IconProps) {
   );
 }
 
+export function PlusIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </IconBase>
+  );
+}
+
 export function LockIcon(props: IconProps) {
   return (
     <IconBase {...props}>

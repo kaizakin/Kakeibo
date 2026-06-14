@@ -21,7 +21,7 @@ export function SiteHeader() {
           transitionTypes={["nav-back"]}
           className="rounded-xl text-white outline-none ring-indigo-action/30 focus-visible:ring-4"
         >
-          <BrandMark />
+          <BrandMark theme="dark" />
         </Link>
 
         <nav aria-label="Primary navigation" className="flex items-center gap-1">

@@ -12,7 +12,17 @@ function formatPaise(paise: number): string {
 }
 
 export default async function BalancesPage() {
-  const { groupId, groupName } = await getActiveGroupWithName();
+  const activeGroup = await getActiveGroupWithName();
+
+  if (!activeGroup) {
+    return (
+      <div className="rounded-2xl border border-line bg-white p-8 text-center">
+        <p className="text-sm text-muted">No group selected.</p>
+      </div>
+    );
+  }
+
+  const { groupId, groupName } = activeGroup;
 
   const [balanceResult, debtResult] = await Promise.all([
     getGroupBalances(groupId).catch(() => null),

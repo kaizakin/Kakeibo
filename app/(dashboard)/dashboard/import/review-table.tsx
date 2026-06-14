@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import { toast } from "sonner";
 import { StatusBadge } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
 import { CheckIcon, ArrowRightIcon } from "@/components/icons";
@@ -170,6 +171,7 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
                 }
               }
               setDecisions(next);
+              toast.success(`Approved ${errorFreeCount} error-free records`);
             }}
             className="rounded-lg border border-sage-200 bg-sage-50 px-3 py-1.5 text-xs font-semibold text-sage-700 transition-colors hover:bg-sage-100"
           >
@@ -183,6 +185,7 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
                 next.set(String(row.rowNumber), "APPROVED");
               }
               setDecisions(next);
+              toast.success("Approved all records");
             }}
             className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-sage-50"
           >
@@ -200,6 +203,7 @@ export function ReviewTable({ rows, onCommit, isCommitting }: ReviewTableProps) 
                 }
               }
               setDecisions(next);
+              toast.success("Rejected flagged records");
             }}
             className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:bg-red-50 hover:text-red-700"
           >

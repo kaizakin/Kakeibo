@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kakeibo - Shared Expense Tracker
 
-## Getting Started
+Kakeibo is a resilient, shared expense tracking application built for accuracy and clarity. Designed to handle messy financial histories, it allows users to smoothly import expenses, split bills, track group balances, and settle debts with complete confidence.
 
-First, run the development server:
+## Tech Stack
 
+- **Framework:** Next.js (App Router)
+- **Database:** PostgreSQL
+- **ORM:** Prisma
+- **Styling:** Tailwind CSS
+- **Authentication:** NextAuth (Google OAuth)
+- **Package Manager:** pnpm
+
+## Setup Instructions
+
+Follow these steps to get the project up and running locally:
+
+### 1. Install dependencies
+Make sure you have `pnpm` installed, then run:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Environment Variables
+Create a `.env` file in the root of the project. You'll need the following variables configured:
+```env
+# Database configuration (PostgreSQL)
+DATABASE_URL="postgresql://user:password@host:port/database"
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+# NextAuth configuration
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your-secret-key"
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Google OAuth
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+```
 
-## Learn More
+### 3. Database Setup
+Run the Prisma migrations to set up your PostgreSQL database schema:
+```bash
+pnpm db:migrate
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 4. Start the Development Server
+```bash
+pnpm dev
+```
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the app in action!
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## AI Assistance Disclosure
 
-## Deploy on Vercel
+As per the assignment requirements, I want to be fully transparent about the AI tools I leaned on. Here’s a breakdown of how different AI models assisted me throughout the development process:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Codex with GPT 5.4 & Claude Sonnet 4.6:** I used these models heavily at the beginning of the project to help scaffold the initial backend architecture, set up the Next.js routes, and figure out the core Prisma database schema for handling the complex math behind shared expenses and transactions.
+- **Antigravity with Gemini 3.1:** This was my go-to for the frontend design! I used it to assist with the UI parts of things designing the dashboard, refining the layouts, setting up the custom Tailwind CSS themes, and polishing the user experience (like fixing table overlaps and adding smooth auto-scrolling!).
+- **Deepseek V4 Flash:** I kept this model running alongside me for general coding assistance. It was incredibly helpful for rapid refactoring, quickly executing small tedious tasks, making quick UI adjustments on the fly, and acting as an extra set of eyes for general problem-solving along the way.

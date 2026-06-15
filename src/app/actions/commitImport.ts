@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma as db } from "@/src/lib/db";
-import type { Currency, SplitType } from "@prisma/client";
+import type { Currency, SplitType } from "@/prisma/generated/prisma";
 
 // ---------------------------------------------------------------------------
 // Server Action: Commit an import batch (Review & Write)

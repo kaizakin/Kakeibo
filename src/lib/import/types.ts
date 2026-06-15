@@ -1,4 +1,4 @@
-import type { SplitType } from "@prisma/client";
+import type { SplitType } from "@/prisma/generated/prisma";
 import type { SupportedCurrency } from "@/src/lib/finance/money";
 
 // ---------------------------------------------------------------------------

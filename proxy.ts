@@ -7,7 +7,8 @@ import { authConfig } from "@/src/lib/auth.config";
  *
  * Replaces the deprecated middleware.ts convention.
  */
-export const { auth: proxy } = NextAuth(authConfig);
+const { auth } = NextAuth(authConfig);
+export default auth;
 
 export const config = {
   matcher: ["/dashboard/:path*"],

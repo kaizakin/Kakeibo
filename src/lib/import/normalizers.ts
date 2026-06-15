@@ -1,5 +1,5 @@
 import { parse, isValid } from "date-fns";
-import type { SplitType } from "@prisma/client";
+import type { SplitType } from "@/prisma/generated/prisma";
 import type {
   RawCsvRow,
   ParsedExpenseRow,

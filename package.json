@@ -13,7 +13,8 @@
     "db:validate": "prisma validate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:nuke": "npx tsx scripts/nuke-db.ts"
+    "db:nuke": "npx tsx scripts/nuke-db.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
@@ -34,6 +35,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/papaparse": "^5.5.2",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^4.1.8",

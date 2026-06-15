@@ -12,7 +12,7 @@
 import "dotenv/config";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../prisma/generated/prisma/client";
+import { PrismaClient } from "../prisma/generated/prisma";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -28,7 +28,7 @@ async function nuke() {
 
   // Use Prisma model deleteMany() — this avoids raw SQL table naming issues
   // and respects the schema's `@@map` or default naming automatically.
-  const deletions: { label: string; run: (tx: typeof prisma) => Promise<{ count: number }> }[] = [
+  const deletions: { label: string; run: (tx: any) => Promise<{ count: number }> }[] = [
     { label: "ImportAnomaly",     run: (tx) => tx.importAnomaly.deleteMany() },
     { label: "ExpenseSplit",      run: (tx) => tx.expenseSplit.deleteMany() },
     { label: "Expense",           run: (tx) => tx.expense.deleteMany() },

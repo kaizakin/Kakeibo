@@ -3,8 +3,8 @@
 import { prisma as db } from "@/src/lib/db";
 import { runImportPipeline } from "@/src/lib/import/pipeline";
 import type { ImportPolicy, ImportReport } from "@/src/lib/import/types";
-import type { AnomalyCode, AnomalySeverity, Currency, SplitType } from "@prisma/client";
-
+import type { AnomalyCode, AnomalySeverity, Currency, SplitType } from "@/prisma/generated/prisma";
+import { Prisma } from "@/prisma/generated/prisma";
 // ---------------------------------------------------------------------------
 // Helper: extract unique user names from CSV content
 // ---------------------------------------------------------------------------
@@ -235,7 +235,7 @@ export async function stageImport(
             date: clean?.date ? new Date(clean.date) : null,
             splitType: clean?.splitType as SplitType | null ?? null,
             isSettlement: clean?.isSettlement ?? null,
-            normalizedSplits: clean?.splits ?? null,
+            normalizedSplits: (clean?.splits as unknown as Prisma.InputJsonValue) ?? Prisma.DbNull,
           },
         });
 
@@ -249,7 +249,7 @@ export async function stageImport(
               code: a.code as AnomalyCode,
               severity: a.severity as AnomalySeverity,
               message: a.message,
-              details: a.details ?? null,
+              details: (a.details as unknown as Prisma.InputJsonValue) ?? Prisma.DbNull,
             })),
           });
         }

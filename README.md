@@ -48,6 +48,12 @@ pnpm dev
 ```
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the app in action!
 
+### 5. Running Tests
+Whenever you make changes to the code, please run the test suite to ensure everything is working correctly:
+```bash
+pnpm test
+```
+
 ---
 
 ## AI Assistance Disclosure
